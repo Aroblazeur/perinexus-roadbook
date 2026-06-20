@@ -52,5 +52,5 @@ projet utilise le [versionnage sémantique](https://semver.org/lang/fr/).
 - Premier fichier de données de démonstration du roadbook.
 
 [Unreleased]: https://github.com/Aroblazeur/perinexus-roadbook/compare/v0.3.0...HEAD
-[0.3.0]: https://github.com/Aroblazeur/perinexus-roadbook/releases/tag/v0.3.0
+[0.3.0]: https://github.com/Aroblazeur/perinexus-roadbook/tree/v0.3.0
 [0.1.0]: https://github.com/Aroblazeur/perinexus-roadbook/tree/f1124f1f2bf13c912573529224c5e2e6f25c554a
