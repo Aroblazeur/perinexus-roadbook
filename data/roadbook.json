@@ -1,37 +1,129 @@
 {
-  "title": "Perinexus \u00e0 v\u00e9lo",
-  "description": "Trois jours d\u2019itin\u00e9rance \u00e0 v\u00e9lo entre voies vertes, petites routes et panoramas.",
-  "days": [
-    {
-      "title": "Mise en jambes",
-      "distance": 48,
-      "elevation": 620,
-      "duration": "4 h 15",
-      "description": "Une premi\u00e8re \u00e9tape progressive pour prendre le rythme, entre routes secondaires et voies vertes. La mont\u00e9e finale offre un beau point de vue sur la vall\u00e9e.",
-      "accommodation": "Camping municipal \u2014 accueil jusqu\u2019\u00e0 19 h",
-      "supply": "Boulangerie au km 12, supermarch\u00e9 au km 35 et fontaine au km 41",
-      "pois": ["Centre historique", "Belv\u00e9d\u00e8re", "Voie verte"]
+  "schemaVersion": 1,
+  "roadbook": {
+    "id": "perinexus-demo",
+    "title": "Périnexus à vélo",
+    "description": "Trois jours d’itinérance entre voies vertes, petites routes et panoramas.",
+    "locale": "fr-FR",
+    "branding": {
+      "eyebrow": "Carnet d’itinérance",
+      "title": "Périnexus Roadbook",
+      "tagline": "Toutes les informations utiles pour rouler l’esprit libre.",
+      "footerTitle": "Périnexus Roadbook",
+      "footerMessage": "Bonne route !"
     },
-    {
-      "title": "La grande travers\u00e9e",
-      "distance": 63,
-      "elevation": 980,
-      "duration": "5 h 45",
-      "description": "L\u2019\u00e9tape reine du parcours, avec plusieurs ascensions r\u00e9guli\u00e8res et une longue descente panoramique. Gardez de l\u2019\u00e9nergie pour le dernier col.",
-      "accommodation": "G\u00eete d\u2019\u00e9tape \u2014 d\u00eener sur r\u00e9servation",
-      "supply": "\u00c9picerie au km 18, restaurant au km 39 et point d\u2019eau au sommet",
-      "pois": ["Col principal", "Cascade", "Table d\u2019orientation"]
-    },
-    {
-      "title": "Cap sur l\u2019arriv\u00e9e",
-      "distance": 42,
-      "elevation": 350,
-      "duration": "3 h 30",
-      "description": "Une derni\u00e8re journ\u00e9e plus roulante le long du lac, id\u00e9ale pour profiter du paysage avant de rejoindre la destination et la gare.",
-      "accommodation": "H\u00f4tel pr\u00e8s de la gare \u2014 local v\u00e9lo s\u00e9curis\u00e9",
-      "supply": "March\u00e9 au km 9, caf\u00e9 au km 27 et commerces \u00e0 l\u2019arriv\u00e9e",
-      "pois": ["Lac", "March\u00e9 couvert", "Office de tourisme"]
-    }
-  ]
+    "days": [
+      {
+        "id": "mise-en-jambes",
+        "title": "Mise en jambes",
+        "date": "12 juin 2026",
+        "departure": "Place du Marché",
+        "arrival": "Camping de la Vallée",
+        "kilometers": 48,
+        "elevationGain": 620,
+        "elevationLoss": 540,
+        "durationMinutes": 255,
+        "difficulty": "Modérée",
+        "accommodation": {
+          "name": "Camping municipal",
+          "details": "Accueil jusqu’à 19 h"
+        },
+        "description": "Une première étape progressive entre routes secondaires et voies vertes. La montée finale offre un beau point de vue sur la vallée.",
+        "gpx": "",
+        "photos": [],
+        "interest": [
+          { "name": "Centre historique", "type": "culture" },
+          { "name": "Belvédère", "type": "viewpoint" },
+          { "name": "Voie verte", "type": "route" }
+        ],
+        "restaurants": [
+          { "name": "Café de la Place", "km": 12 }
+        ],
+        "shops": [
+          { "name": "Supermarché", "km": 35 }
+        ],
+        "water": [
+          { "name": "Fontaine publique", "km": 41 }
+        ],
+        "variants": [],
+        "notes": [],
+        "warning": []
+      },
+      {
+        "id": "grande-traversee",
+        "title": "La grande traversée",
+        "date": "13 juin 2026",
+        "departure": "Camping de la Vallée",
+        "arrival": "Gîte du Col",
+        "kilometers": 63,
+        "elevationGain": 980,
+        "elevationLoss": 760,
+        "durationMinutes": 345,
+        "difficulty": "Soutenue",
+        "accommodation": {
+          "name": "Gîte d’étape",
+          "details": "Dîner sur réservation"
+        },
+        "description": "L’étape reine du parcours, avec plusieurs ascensions régulières et une longue descente panoramique. Gardez de l’énergie pour le dernier col.",
+        "gpx": "",
+        "photos": [],
+        "interest": [
+          { "name": "Col principal", "type": "summit" },
+          { "name": "Cascade", "type": "nature" },
+          { "name": "Table d’orientation", "type": "viewpoint" }
+        ],
+        "restaurants": [
+          { "name": "Auberge du Col", "km": 39 }
+        ],
+        "shops": [
+          { "name": "Épicerie", "km": 18 }
+        ],
+        "water": [
+          { "name": "Point d’eau du sommet", "km": 51 }
+        ],
+        "variants": [],
+        "notes": [
+          "Prévoir suffisamment d’eau avant la dernière ascension."
+        ],
+        "warning": [
+          "Descente étroite après le col."
+        ]
+      },
+      {
+        "id": "cap-sur-arrivee",
+        "title": "Cap sur l’arrivée",
+        "date": "14 juin 2026",
+        "departure": "Gîte du Col",
+        "arrival": "Gare centrale",
+        "kilometers": 42,
+        "elevationGain": 350,
+        "elevationLoss": 650,
+        "durationMinutes": 210,
+        "difficulty": "Facile",
+        "accommodation": {
+          "name": "Hôtel près de la gare",
+          "details": "Local vélo sécurisé"
+        },
+        "description": "Une dernière journée plus roulante le long du lac, idéale pour profiter du paysage avant de rejoindre la destination et la gare.",
+        "gpx": "",
+        "photos": [],
+        "interest": [
+          { "name": "Lac", "type": "nature" },
+          { "name": "Marché couvert", "type": "food" },
+          { "name": "Office de tourisme", "type": "service" }
+        ],
+        "restaurants": [
+          { "name": "Café du Lac", "km": 27 }
+        ],
+        "shops": [
+          { "name": "Marché", "km": 9 },
+          { "name": "Commerces de la gare", "km": 42 }
+        ],
+        "water": [],
+        "variants": [],
+        "notes": [],
+        "warning": []
+      }
+    ]
+  }
 }
-
