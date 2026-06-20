@@ -152,7 +152,7 @@ function buildAccommodation(record) {
     return {
         name: firstValue(record, ["hebergement", "hébergement"]),
         url: firstValue(record, ["site web de l'hebergement", "site web de l hebergement"]),
-        alternatives: splitMulti(firstValue(record, ["hebergement altenatif", "hebergement alternatif"])),
+        alternatives: splitMulti(firstValue(record, ["hebergement altenatif", "hebergement alternatif", "hebergement alternative"])),
         houseRentals: splitMulti(firstValue(record, ["possibilite de location maison", "possibilité de location maison"]))
     };
 }
@@ -296,6 +296,17 @@ async function loadGoogleSheetRoadbook() {
 }
 
 async function loadFallbackRoadbook() {
+    async function loadNodeFallback(path) {
+        if (typeof window !== "undefined" || typeof require !== "function") {
+            return null;
+        }
+        const fs = require("node:fs/promises");
+        const nodePath = require("node:path");
+        const absolutePath = nodePath.resolve(__dirname || process.cwd(), path);
+        const content = await fs.readFile(absolutePath, "utf8");
+        return JSON.parse(content);
+    }
+
     let lastError = null;
 
     for (const path of FALLBACK_PATHS) {
@@ -308,28 +319,39 @@ async function loadFallbackRoadbook() {
             return response.json();
         } catch (error) {
             lastError = error;
-            if (typeof window === "undefined" && typeof require === "function") {
-                try {
-                    const fs = require("node:fs/promises");
-                    const nodePath = require("node:path");
-                    const absolutePath = nodePath.resolve(__dirname || process.cwd(), path);
-                    const content = await fs.readFile(absolutePath, "utf8");
-                    return JSON.parse(content);
-                } catch (fileError) {
-                    lastError = fileError;
-                }
-            }
+        }
+
+        try {
+            const localFallback = await loadNodeFallback(path);
+            if (localFallback) return localFallback;
+        } catch (error) {
+            lastError = error;
         }
     }
 
     throw lastError || new Error(ERROR_MESSAGES.NETWORK);
 }
 
+function logFallbackError(error) {
+    if (typeof console !== "undefined" && typeof console.warn === "function") {
+        const message = error && error.message ? error.message : "erreur inconnue";
+        console.warn(`Chargement Google Sheets échoué, utilisation du fallback JSON: ${message}`);
+    }
+}
+
 async function loadRoadbookData() {
     try {
         return await loadGoogleSheetRoadbook();
     } catch (error) {
-        return loadFallbackRoadbook();
+        logFallbackError(error);
+        try {
+            return await loadFallbackRoadbook();
+        } catch (fallbackError) {
+            if (typeof error?.message === "string" && error.message.startsWith("HTTP ")) {
+                throw error;
+            }
+            throw fallbackError;
+        }
     }
 }
 
