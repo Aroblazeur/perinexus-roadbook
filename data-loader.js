@@ -183,6 +183,7 @@ function mapEtape(record) {
     const elevationGain = toNumber(firstValue(record, ["d+ (m)"]));
     const elevationLoss = toNumber(firstValue(record, ["d− (m)", "d- (m)"]));
     const accommodation = buildAccommodation(record);
+    const routeLabel = [departure, arrival].filter(Boolean).join(" → ");
 
     return {
         stage: stageNumber,
@@ -196,7 +197,7 @@ function mapEtape(record) {
         gpx,
         accommodation,
         variants: [],
-        title: `Jour ${dayNumber ?? "?"}${departure || arrival ? ` - ${[departure, arrival].filter(Boolean).join(" → ")}` : ""}`,
+        title: `Jour ${dayNumber ?? "?"}${routeLabel ? ` - ${routeLabel}` : ""}`,
         elevation: elevationGain ?? 0,
         duration: "",
         description: notes || "",
@@ -320,8 +321,15 @@ async function loadFallbackRoadbook() {
             return null;
         }
 
-        const fs = require("node:fs/promises");
-        const nodePath = require("node:path");
+        let fs;
+        let nodePath;
+        try {
+            fs = require("node:fs/promises");
+            nodePath = require("node:path");
+        } catch (error) {
+            throw new Error("Fallback Node.js indisponible");
+        }
+
         const absolutePath = nodePath.resolve(__dirname || process.cwd(), path);
         const content = await fs.readFile(absolutePath, "utf8");
         return JSON.parse(content);
@@ -367,7 +375,7 @@ async function loadRoadbookData() {
         try {
             return await loadFallbackRoadbook();
         } catch (fallbackError) {
-            // Preserve explicit HTTP status failures from Google Sheets when both sources fail.
+            // Keep explicit HTTP status from Sheets so server-side failures stay distinguishable from local fallback issues.
             if (typeof error?.message === "string" && error.message.startsWith("HTTP ")) {
                 throw error;
             }
