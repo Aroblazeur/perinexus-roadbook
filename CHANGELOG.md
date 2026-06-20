@@ -10,6 +10,12 @@ de sa premiere version publiee.
 
 ### Added
 
+- Audit technique complet du Sprint 3 dans `docs/SPRINT3_REVIEW.md`.
+- Fabrique de cartes dédiée dans `js/card-factory.js`.
+- Chargement robuste et typé des erreurs dans `js/data-loader.js`.
+- Utilitaires partagés dans `js/utils.js`.
+- Validation automatisée du contrat JSON et du shell HTML générique.
+- Serveur HTTP local avec la commande `npm start`.
 - Feuille de route produit dans `docs/ROADMAP.md`.
 - Modele JSON versionne avec identifiants stables pour les etapes.
 - Store de donnees responsable de la validation, des totaux et de la navigation.
@@ -22,6 +28,11 @@ de sa premiere version publiee.
 
 ### Changed
 
+- Chaque carte affiche désormais date, départ, arrivée, kilomètres, D+, D-,
+  difficulté, hébergement et description avec des valeurs de repli sûres.
+- Le modèle de journée supporte `gpx`, `photos`, `interest`, `restaurants`,
+  `shops`, `water`, `variants`, `notes` et `warning`.
+- Le README documente le lancement, l’édition des données et l’ajout d’une étape.
 - Le fichier `data/roadbook.json` est desormais la source unique du contenu.
 - L'application est separee en modules de chargement, d'etat et de rendu.
 - Le HTML est devenu un shell generique sans journee codee en dur.
@@ -29,6 +40,7 @@ de sa premiere version publiee.
 
 ### Removed
 
+- Fichiers historiques concurrents `roadbook.json`, `Style..css` et `TEST.md`.
 - L'ancien point d'entree monolithique `app.js`.
 - Le contenu de journee auparavant present dans le balisage statique.
 

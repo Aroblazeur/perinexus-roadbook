@@ -1,158 +1,118 @@
-import { formatDuration, getRoadbookTotals } from "./roadbook-store.js";
+import { createDayCard } from "./card-factory.js";
+import { createRoadbookStore, getRoadbookTotals } from "./roadbook-store.js";
+import { createElement } from "./utils.js";
 
-const $ = (id) => document.getElementById(id);
+const REQUIRED_ELEMENT_IDS = [
+  "app", "brand-eyebrow", "brand-title", "brand-tagline", "roadbook-info", "trip-stats",
+  "stage-count", "stage-list", "day-navigation", "previous-day", "next-day", "current-day",
+  "progress-bar", "day-card-host", "app-error", "footer-title", "footer-message"
+];
 
 export function createRoadbookView() {
-  const elements = {
-    app: $("app"), brandEyebrow: $("brand-eyebrow"), brandTitle: $("brand-title"),
-    brandTagline: $("brand-tagline"), info: $("roadbook-info"), tripStats: $("trip-stats"),
-    stageCount: $("stage-count"), stageList: $("stage-list"), previous: $("previous-day"),
-    next: $("next-day"), currentDay: $("current-day"), progress: $("progress-bar"),
-    stageLabel: $("stage-label"), dayTitle: $("day-title"), stageStats: $("stage-stats"),
-    description: $("description"), details: $("stage-details"), detail: $("stage-detail"),
-    footerTitle: $("footer-title"), footerMessage: $("footer-message")
-  };
+  const elements = Object.fromEntries(REQUIRED_ELEMENT_IDS.map((id) => [id, document.getElementById(id)]));
+  const missing = REQUIRED_ELEMENT_IDS.filter((id) => !elements[id]);
+  if (missing.length) throw new Error(`Missing application elements: ${missing.join(", ")}`);
 
-  function renderRoadbook(roadbook, onSelect) {
-    const branding = roadbook.branding;
-    const totals = getRoadbookTotals(roadbook);
-    document.documentElement.lang = roadbook.locale.split("-")[0];
-    document.title = roadbook.title;
-    elements.brandEyebrow.textContent = branding.eyebrow || "Roadbook";
-    elements.brandTitle.textContent = branding.title || roadbook.title;
-    elements.brandTagline.textContent = branding.tagline || roadbook.description;
-    elements.footerTitle.textContent = branding.footerTitle || roadbook.title;
-    elements.footerMessage.textContent = branding.footerMessage || "";
-    elements.info.replaceChildren(
-      textElement("p", "eyebrow", "Votre aventure"),
-      textElement("h2", "", roadbook.title, "roadbook-title"),
-      textElement("p", "", roadbook.description)
-    );
-    renderDefinitionList(elements.tripStats, [
-      [roadbook.days.length, "etapes"], [totals.distanceKm, "kilometres"],
-      [totals.elevationGainM.toLocaleString(roadbook.locale), "metres D+"]
-    ]);
-    elements.tripStats.hidden = false;
-    elements.stageCount.textContent = `${roadbook.days.length} etapes`;
-    renderStageList(roadbook.days, onSelect);
+  let store;
+
+  function initialize(roadbook) {
+    store = createRoadbookStore(roadbook);
+    renderRoadbookHeader(roadbook);
+    renderStageList(roadbook.days);
+    renderState(store.getState());
+    store.subscribe((state) => renderState(state, { focus: true }));
+    elements["previous-day"].addEventListener("click", store.previous);
+    elements["next-day"].addEventListener("click", store.next);
+    document.addEventListener("keydown", handleKeyboardNavigation);
     elements.app.setAttribute("aria-busy", "false");
   }
 
-  function renderStageList(days, onSelect) {
-    elements.stageList.replaceChildren(...days.map((day, index) => {
-      const item = document.createElement("li");
-      const button = document.createElement("button");
-      button.type = "button";
-      button.dataset.dayId = day.id;
+  function handleKeyboardNavigation(event) {
+    if (event.key === "ArrowLeft") store.previous();
+    if (event.key === "ArrowRight") store.next();
+  }
+
+  function renderRoadbookHeader(roadbook) {
+    const branding = roadbook.branding;
+    const totals = getRoadbookTotals(roadbook);
+    document.documentElement.lang = roadbook.locale.split("-")[0];
+    elements["brand-eyebrow"].textContent = branding.eyebrow || "Roadbook";
+    elements["brand-title"].textContent = branding.title || roadbook.title;
+    elements["brand-tagline"].textContent = branding.tagline || roadbook.description;
+    elements["footer-title"].textContent = branding.footerTitle || roadbook.title;
+    elements["footer-message"].textContent = branding.footerMessage || "";
+    elements["roadbook-info"].replaceChildren(
+      createElement("p", { className: "eyebrow", text: "Votre aventure" }),
+      createElement("h2", { text: roadbook.title, attributes: { id: "roadbook-title" } }),
+      createElement("p", { text: roadbook.description })
+    );
+    renderTotals(roadbook, totals);
+    elements["stage-count"].textContent = `${roadbook.days.length} étapes`;
+  }
+
+  function renderTotals(roadbook, totals) {
+    const entries = [
+      [roadbook.days.length, "étapes"],
+      [totals.kilometers, "kilomètres"],
+      [totals.elevationGain.toLocaleString(roadbook.locale), "mètres D+"]
+    ];
+    elements["trip-stats"].replaceChildren(...entries.map(([value, label]) => {
+      const item = createElement("div", { className: "summary__stat" });
+      item.append(createElement("dd", { text: String(value) }), createElement("dt", { text: label }));
+      return item;
+    }));
+    elements["trip-stats"].hidden = false;
+  }
+
+  function renderStageList(days) {
+    elements["stage-list"].replaceChildren(...days.map((day, index) => {
+      const item = createElement("li");
+      const button = createElement("button", { attributes: { type: "button", "data-day-id": day.id } });
       button.append(
-        textElement("span", "stage-list__number", String(index + 1).padStart(2, "0")),
-        textElement("span", "stage-list__title", day.title),
-        textElement("span", "stage-list__distance", `${day.distanceKm} km`)
+        createElement("span", { className: "stage-list__number", text: String(index + 1).padStart(2, "0") }),
+        createElement("span", { className: "stage-list__title", text: day.title }),
+        createElement("span", { className: "stage-list__distance", text: day.kilometers === null ? "--" : `${day.kilometers} km` })
       );
-      button.addEventListener("click", () => onSelect(day.id));
+      button.addEventListener("click", () => store.select(day.id));
       item.append(button);
       return item;
     }));
   }
 
-  function renderDay(state, options = {}) {
-    const { roadbook, currentDay: day, currentIndex } = state;
-    elements.currentDay.textContent = `Jour ${currentIndex + 1} sur ${roadbook.days.length}`;
-    elements.progress.style.width = `${((currentIndex + 1) / roadbook.days.length) * 100}%`;
-    elements.stageLabel.textContent = `Etape ${currentIndex + 1}`;
-    elements.dayTitle.textContent = day.title;
-    elements.description.textContent = day.summary;
-    elements.previous.disabled = !state.hasPrevious;
-    elements.next.disabled = !state.hasNext;
-    elements.stageList.querySelectorAll("button").forEach((button) => {
-      const active = button.dataset.dayId === day.id;
+  function renderState(state, { focus = false } = {}) {
+    const { roadbook, currentDay, currentIndex } = state;
+    elements["current-day"].textContent = `Jour ${currentIndex + 1} sur ${roadbook.days.length}`;
+    elements["progress-bar"].style.width = `${((currentIndex + 1) / roadbook.days.length) * 100}%`;
+    elements["previous-day"].disabled = !state.hasPrevious;
+    elements["next-day"].disabled = !state.hasNext;
+    updateActiveStage(currentDay.id);
+
+    const card = createDayCard(currentDay, currentIndex);
+    elements["day-card-host"].replaceChildren(card);
+    document.title = `${currentDay.title} - ${roadbook.title}`;
+    if (focus) card.focus({ preventScroll: true });
+  }
+
+  function updateActiveStage(dayId) {
+    elements["stage-list"].querySelectorAll("button").forEach((button) => {
+      const active = button.dataset.dayId === dayId;
       button.classList.toggle("is-active", active);
       if (active) button.setAttribute("aria-current", "step"); else button.removeAttribute("aria-current");
     });
-
-    renderStats(day);
-    renderDetails(day);
-    document.title = `${day.title} - ${roadbook.title}`;
-    if (options.focus) elements.detail.focus({ preventScroll: true });
-  }
-
-  function renderStats(day) {
-    const stats = [
-      ["&#x2194;", "Distance", `${day.distanceKm} km`],
-      ["&#x2197;", "Denivele", `${day.elevationGainM} m D+`],
-      ["&#x25f7;", "Duree", formatDuration(day.durationMinutes)]
-    ];
-    elements.stageStats.replaceChildren(...stats.map(([icon, label, value]) => {
-      const node = $("stat-template").content.firstElementChild.cloneNode(true);
-      node.querySelector(".stat__icon").innerHTML = icon;
-      node.querySelector("small").textContent = label;
-      node.querySelector("strong").textContent = value;
-      return node;
-    }));
-  }
-
-  function renderDetails(day) {
-    const details = [
-      ["&#x2316;", "Points d'interet", listContent(day.pois, (poi) => poi.name)],
-      ["&#x2668;", "Ravitaillement", listContent(day.supply, supplyLabel)],
-      ["&#x2302;", "Hebergement", accommodationContent(day.accommodation)]
-    ];
-    elements.details.replaceChildren(...details.map(([icon, title, content]) => {
-      const node = $("detail-template").content.firstElementChild.cloneNode(true);
-      node.querySelector(".detail__icon").innerHTML = icon;
-      node.querySelector("h2").textContent = title;
-      node.querySelector(".detail__content").append(content);
-      return node;
-    }));
   }
 
   function renderError(message) {
-    elements.info.replaceChildren(
-      textElement("h2", "", "Roadbook indisponible", "roadbook-title"),
-      textElement("p", "", message)
+    elements["roadbook-info"].replaceChildren(
+      createElement("h2", { text: "Roadbook indisponible", attributes: { id: "roadbook-title" } }),
+      createElement("p", { text: message })
     );
+    elements["stage-list"].replaceChildren();
+    elements["day-card-host"].replaceChildren();
+    elements["day-navigation"].hidden = true;
+    elements["app-error"].hidden = false;
+    elements["app-error"].textContent = message;
     elements.app.setAttribute("aria-busy", "false");
-    elements.previous.disabled = true;
-    elements.next.disabled = true;
   }
 
-  return Object.freeze({ elements, renderRoadbook, renderDay, renderError });
+  return Object.freeze({ initialize, renderError });
 }
-
-function textElement(tag, className, text, id) {
-  const element = document.createElement(tag);
-  if (className) element.className = className;
-  if (id) element.id = id;
-  element.textContent = text;
-  return element;
-}
-
-function renderDefinitionList(container, entries) {
-  container.replaceChildren(...entries.flatMap(([value, label]) => [
-    textElement("div", "summary__stat", ""),
-  ]));
-  [...container.children].forEach((item, index) => {
-    item.append(textElement("dd", "", String(entries[index][0])), textElement("dt", "", entries[index][1]));
-  });
-}
-
-function listContent(items, formatter) {
-  if (!items.length) return textElement("p", "empty", "Non renseigne");
-  const list = document.createElement("ul");
-  list.className = "tag-list";
-  list.append(...items.map((item) => textElement("li", "", formatter(item))));
-  return list;
-}
-
-function supplyLabel(item) {
-  return item.km === undefined ? item.label : `${item.label} - km ${item.km}`;
-}
-
-function accommodationContent(accommodation) {
-  if (!accommodation) return textElement("p", "empty", "Non renseigne");
-  const wrapper = document.createDocumentFragment();
-  wrapper.append(textElement("p", "detail__lead", accommodation.name));
-  if (accommodation.details) wrapper.append(textElement("p", "", accommodation.details));
-  return wrapper;
-}
-

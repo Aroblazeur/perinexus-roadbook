@@ -1,35 +1,51 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createRoadbookStore, formatDuration, getRoadbookTotals, parseRoadbook, RoadbookDataError } from "../js/roadbook-store.js";
+import { createRoadbookStore, getRoadbookTotals, parseRoadbook, RoadbookDataError } from "../js/roadbook-store.js";
 
+const minimalDay = { id: "one", title: "One" };
 const payload = {
   schemaVersion: 1,
   roadbook: {
-    id: "test", title: "Test", days: [
-      { id: "one", title: "One", distanceKm: 10, elevationGainM: 100, durationMinutes: 65, summary: "First" },
-      { id: "two", title: "Two", distanceKm: 20, elevationGainM: 250, durationMinutes: 120, summary: "Second" }
+    id: "test",
+    title: "Test",
+    days: [
+      { ...minimalDay, kilometers: 10, elevationGain: 100, elevationLoss: 80, durationMinutes: 65 },
+      { id: "two", title: "Two", kilometers: 20, elevationGain: 250, elevationLoss: 200, durationMinutes: 120 }
     ]
   }
 };
 
-test("parses and normalizes a valid roadbook", () => {
+test("normalizes every Sprint 3 extension field", () => {
   const roadbook = parseRoadbook(payload);
-  assert.equal(roadbook.days.length, 2);
-  assert.deepEqual(roadbook.days[0].photos, []);
+  const day = roadbook.days[0];
+  assert.equal(day.gpx, "");
+  for (const field of ["photos", "interest", "restaurants", "shops", "water", "variants", "notes", "warning"]) {
+    assert.deepEqual(day[field], [], field);
+  }
 });
 
-test("rejects invalid and duplicate days", () => {
+test("accepts missing optional display fields without throwing", () => {
+  const day = parseRoadbook({ schemaVersion: 1, roadbook: { id: "test", title: "Test", days: [minimalDay] } }).days[0];
+  assert.equal(day.date, "");
+  assert.equal(day.kilometers, null);
+  assert.equal(day.accommodation, null);
+  assert.equal(day.description, "");
+});
+
+test("rejects an unsupported schema and duplicate identifiers", () => {
   assert.throws(() => parseRoadbook({ schemaVersion: 2 }), RoadbookDataError);
   const duplicate = structuredClone(payload);
   duplicate.roadbook.days[1].id = "one";
   assert.throws(() => parseRoadbook(duplicate), /Duplicate day id/);
 });
 
-test("computes totals and durations", () => {
-  const roadbook = parseRoadbook(payload);
-  assert.deepEqual(getRoadbookTotals(roadbook), { distanceKm: 30, elevationGainM: 350, durationMinutes: 185 });
-  assert.equal(formatDuration(65), "1 h 05");
-  assert.equal(formatDuration(120), "2 h");
+test("computes roadbook totals", () => {
+  assert.deepEqual(getRoadbookTotals(parseRoadbook(payload)), {
+    kilometers: 30,
+    elevationGain: 350,
+    elevationLoss: 280,
+    durationMinutes: 185
+  });
 });
 
 test("selects days without leaving valid bounds", () => {
@@ -41,4 +57,3 @@ test("selects days without leaving valid bounds", () => {
   assert.equal(store.next(), false);
   assert.equal(store.select("one"), true);
 });
-

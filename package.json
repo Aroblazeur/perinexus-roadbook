@@ -3,8 +3,11 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "start": "node scripts/serve.mjs",
     "test": "node --test",
-    "check": "node --check js/app.js && node --check js/roadbook-store.js && node --check js/roadbook-view.js"
+    "check": "node --check js/app.js && node --check js/card-factory.js && node --check js/data-loader.js && node --check js/roadbook-store.js && node --check js/roadbook-view.js && node --check js/utils.js",
+    "validate": "node scripts/validate-project.mjs",
+    "verify": "npm run check && npm test && npm run validate"
   }
 }
 

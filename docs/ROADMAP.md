@@ -18,7 +18,7 @@ de sortie doivent etre satisfaits avant de passer au suivant.
 | --- | --- | --- | --- |
 | 1 | Socle du projet | Termine | Structure HTML, JavaScript et donnees initiales |
 | 2 | Roadbook utilisable | En revue | Interface responsive et navigation entre les etapes |
-| 3 | Data-driven Roadbook | En revue | Contenu entierement genere depuis un JSON versionne |
+| 3 | Data-driven Roadbook | Validé techniquement | Contenu entièrement généré depuis un JSON versionné |
 | 4 | Carte interactive | Planifie | Visualisation Leaflet des etapes et points utiles |
 | 5 | Traces GPX | Planifie | Chargement, affichage et analyse des traces |
 | 6 | PWA et mode hors ligne | Planifie | Installation et consultation fiable sans reseau |

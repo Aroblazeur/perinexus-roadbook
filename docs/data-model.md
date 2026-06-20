@@ -1,24 +1,75 @@
-# Modele de donnees du roadbook
+# Modèle de données du roadbook
 
-Le fichier `data/roadbook.json` est la source unique du contenu affiche. `index.html` ne contient aucune etape.
+`data/roadbook.json` est la source unique du contenu affiché. Le contrat est
+versionné par `schemaVersion`; l’application refuse explicitement une version
+qu’elle ne sait pas interpréter.
 
-## Organisation
+## Racine
 
-- `schemaVersion` permet de faire evoluer le format sans ambiguite.
-- `roadbook` contient les metadonnees, l'identite visuelle et la liste ordonnee des jours.
-- chaque jour possede un `id` stable et ses metriques normalisees (`distanceKm`, `elevationGainM`, `durationMinutes`).
-- `route.gpx`, `route.start`, `route.end` et `photos` sont deja reserves pour les prochains sprints.
-- les listes `pois` et `supply` utilisent des objets extensibles plutot que des chaines opaques.
+```text
+schemaVersion
+roadbook
+  id
+  title
+  description
+  locale
+  branding
+  days[]
+```
 
-## Ajouter une etape
+`roadbook.days` détermine l’ordre de navigation et de génération des cartes.
 
-Dupliquer un objet dans `roadbook.days`, lui donner un `id` unique et renseigner les champs obligatoires. La navigation, les totaux, la liste des etapes et la fiche detaillee seront mis a jour automatiquement.
+## Contrat d’une étape
 
-## Architecture JavaScript
+`id` et `title` sont obligatoires. Tous les champs d’affichage sont normalisés :
+une valeur manquante produit « Non renseigné » plutôt qu’une erreur JavaScript.
 
-- `roadbook-store.js` valide et normalise les donnees, calcule les statistiques et gere la selection.
-- `roadbook-view.js` transforme l'etat en elements DOM.
-- `app.js` charge le JSON et relie le store a la vue.
+```json
+{
+  "id": "identifiant-stable",
+  "title": "Titre",
+  "date": "",
+  "departure": "",
+  "arrival": "",
+  "kilometers": null,
+  "elevationGain": null,
+  "elevationLoss": null,
+  "durationMinutes": null,
+  "difficulty": "",
+  "accommodation": null,
+  "description": "",
+  "gpx": "",
+  "photos": [],
+  "interest": [],
+  "restaurants": [],
+  "shops": [],
+  "water": [],
+  "variants": [],
+  "notes": [],
+  "warning": []
+}
+```
 
-Les futurs modules (carte Leaflet, lecteur GPX, galerie et PWA) pourront s'abonner au store ou lire les champs reserves sans modifier le HTML.
+Les collections acceptent des chaînes simples ou des objets extensibles. Pour un
+point utile, les clés conventionnelles sont `name`, `type` et `km`.
 
+## Responsabilités JavaScript
+
+- `data-loader.js` gère le transport HTTP, les statuts non valides et le parsing JSON.
+- `roadbook-store.js` valide, normalise et expose l’état de navigation.
+- `utils.js` centralise les conversions, valeurs de repli et créations DOM simples.
+- `card-factory.js` crée une carte complète à partir d’une journée normalisée.
+- `roadbook-view.js` rend le roadbook, branche les interactions et remplace la carte active.
+- `app.js` orchestre le démarrage et transforme les erreurs techniques en messages utilisateur.
+
+Cette séparation permet aux futurs modules de consommer le modèle normalisé sans
+dupliquer le chargement ou le rendu. Elle ne préjuge pas de leur implémentation.
+
+## Évolution du schéma
+
+Toute rupture du contrat doit :
+
+1. incrémenter `schemaVersion`;
+2. documenter la migration ici;
+3. adapter le validateur et ses tests;
+4. mettre à jour `CHANGELOG.md`.
