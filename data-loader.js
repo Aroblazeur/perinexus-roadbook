@@ -161,7 +161,12 @@ function buildAccommodation(record) {
 
     return {
         name: firstValue(record, ["hebergement", "hébergement"]),
-        url: firstValue(record, ["site web de l'hebergement", "site web de l hebergement"]),
+        url: firstValue(record, [
+            "site web de l'hébergement",
+            "site web de l hebergement",
+            "site web de l'hebergement",
+            "site web de l hébergement"
+        ]),
         alternatives: splitMulti(alternativesValue),
         houseRentals: splitMulti(firstValue(record, ["possibilite de location maison", "possibilité de location maison"]))
     };
@@ -209,7 +214,7 @@ function mapVariante(record) {
         distanceExtra: toNumber(firstValue(record, ["distance supplementaire (km)", "distance supplémentaire (km)"])),
         elevationGainExtra: toNumber(firstValue(record, ["d+ supplementaire (m)", "d+ supplémentaire (m)"])),
         elevationLossExtra: toNumber(firstValue(record, ["d− supplementaire (m)", "d− supplémentaire (m)", "d- supplementaire (m)", "d- supplémentaire (m)"])),
-        pointOfInterest: firstValue(record, ["point d'intérêt", "point d’intérêt"]),
+        pointOfInterest: firstValue(record, ["point d'intérêt", "point d'interet"]),
         description: firstValue(record, ["description / photos"]),
         link: firstValue(record, ["lien"]),
         gpx: firstValue(record, ["gpx"]),
