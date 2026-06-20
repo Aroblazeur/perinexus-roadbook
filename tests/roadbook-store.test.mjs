@@ -22,6 +22,20 @@ test("normalizes every Sprint 3 extension field", () => {
   for (const field of ["photos", "interest", "restaurants", "shops", "water", "variants", "notes", "warning"]) {
     assert.deepEqual(day[field], [], field);
   }
+  assert.deepEqual(day.route, { start: null, end: null, points: [] });
+});
+
+test("normalizes valid coordinates and rejects invalid coordinates", () => {
+  const routePayload = structuredClone(payload);
+  routePayload.roadbook.days[0].route = {
+    start: { lat: 45.18, lng: 5.72 },
+    end: { lat: 95, lng: 5.8 },
+    points: [{ lat: 45.2, lng: 5.75 }, { lat: "invalid", lng: 5.8 }]
+  };
+  const route = parseRoadbook(routePayload).days[0].route;
+  assert.deepEqual(route.start, { lat: 45.18, lng: 5.72 });
+  assert.equal(route.end, null);
+  assert.deepEqual(route.points, [{ lat: 45.2, lng: 5.75 }]);
 });
 
 test("accepts missing optional display fields without throwing", () => {

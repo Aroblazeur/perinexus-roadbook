@@ -30,6 +30,11 @@
         },
         "description": "Une première étape progressive entre routes secondaires et voies vertes. La montée finale offre un beau point de vue sur la vallée.",
         "gpx": "",
+        "route": {
+          "start": { "lat": 45.1885, "lng": 5.7245 },
+          "end": { "lat": 45.085, "lng": 5.771 },
+          "points": []
+        },
         "photos": [],
         "interest": [
           { "name": "Centre historique", "type": "culture" },
@@ -66,6 +71,11 @@
         },
         "description": "L’étape reine du parcours, avec plusieurs ascensions régulières et une longue descente panoramique. Gardez de l’énergie pour le dernier col.",
         "gpx": "",
+        "route": {
+          "start": { "lat": 45.085, "lng": 5.771 },
+          "end": { "lat": 45.054, "lng": 6.031 },
+          "points": []
+        },
         "photos": [],
         "interest": [
           { "name": "Col principal", "type": "summit" },
@@ -106,6 +116,11 @@
         },
         "description": "Une dernière journée plus roulante le long du lac, idéale pour profiter du paysage avant de rejoindre la destination et la gare.",
         "gpx": "",
+        "route": {
+          "start": { "lat": 45.054, "lng": 6.031 },
+          "end": { "lat": 45.19, "lng": 5.714 },
+          "points": []
+        },
         "photos": [],
         "interest": [
           { "name": "Lac", "type": "nature" },

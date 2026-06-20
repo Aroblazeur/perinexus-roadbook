@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { parseRoadbook } from "../js/roadbook-store.js";
 
 const requiredFutureFields = [
-  "gpx", "photos", "interest", "restaurants", "shops", "water", "variants", "notes", "warning"
+  "gpx", "route", "photos", "interest", "restaurants", "shops", "water", "variants", "notes", "warning"
 ];
 const requiredCardFields = [
   "title", "date", "departure", "arrival", "kilometers", "elevationGain", "elevationLoss",
@@ -21,6 +21,9 @@ for (const day of payload.roadbook.days) {
   for (const field of [...requiredFutureFields, ...requiredCardFields]) {
     assert.ok(Object.hasOwn(day, field), `${day.id} is missing ${field}`);
   }
+  assert.ok(Object.hasOwn(day.route, "start"), `${day.id} route is missing start`);
+  assert.ok(Object.hasOwn(day.route, "end"), `${day.id} route is missing end`);
+  assert.ok(Array.isArray(day.route.points), `${day.id} route points must be an array`);
   assert.equal(html.includes(day.title), false, `${day.id} is hard-coded in index.html`);
 }
 

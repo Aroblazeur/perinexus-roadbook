@@ -7,6 +7,21 @@ projet utilise le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ## [Unreleased]
 
+### Added
+
+- Carte générale Leaflet des départs et arrivées du roadbook.
+- Adaptateur cartographique remplaçable dans `js/map/map-adapter.js`.
+- Modèle optionnel `route.start`, `route.end` et `route.points`.
+- Repli accessible lorsque Leaflet ou les coordonnées sont indisponibles.
+- Recentrage de la carte lors de la sélection d’une étape.
+- Tests de la carte avec, sans et hors disponibilité de Leaflet.
+- Revue du Sprint 4 dans `docs/SPRINT4_REVIEW.md`.
+
+### Changed
+
+- Le store normalise et valide désormais les coordonnées géographiques.
+- Le README documente le rôle de la carte et l’ajout de coordonnées.
+
 ## [0.3.0] - 2026-06-20
 
 ### Added

@@ -40,6 +40,15 @@ h1 { margin-bottom: 7px; font-family: Georgia, serif; font-size: clamp(2.45rem, 
 .loading { animation: pulse 1.5s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: .45; } }
 
+.map-section { margin-top: 24px; padding: clamp(20px, 4vw, 32px); }
+.map-section__heading { margin-bottom: 18px; }
+#roadbook-map { width: 100%; height: clamp(300px, 42vw, 480px); min-height: 300px; border: 1px solid var(--line); border-radius: 14px; background: #e5eee9; z-index: 0; }
+#roadbook-map:focus-visible { outline: 3px solid rgba(232,117,52,.4); outline-offset: 3px; }
+.map-fallback { margin: 0; padding: 22px; border: 1px dashed #91a59b; border-radius: 12px; color: var(--muted); background: #f8f5ed; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.leaflet-container { font-family: inherit; }
+.leaflet-tooltip { color: var(--ink); font-weight: 700; }
+
 .stage-picker { margin: 38px 0 26px; }
 .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 15px; }
 .section-heading h2 { margin: 0; color: var(--forest); font: 700 1.65rem/1.1 Georgia, serif; }
@@ -123,6 +132,7 @@ footer .container { display: flex; justify-content: space-between; gap: 20px; }
   .route-summary { grid-template-columns: 1fr; gap: 8px; }
   .route-summary__arrow { transform: rotate(90deg); justify-self: start; }
   .details-grid { grid-template-columns: 1fr; }
+  #roadbook-map { height: 320px; min-height: 320px; }
   footer .container { flex-direction: column; gap: 2px; }
 }
 

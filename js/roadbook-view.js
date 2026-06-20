@@ -1,5 +1,5 @@
 import { createDayCard } from "./card-factory.js";
-import { createRoadbookStore, getRoadbookTotals } from "./roadbook-store.js";
+import { getRoadbookTotals } from "./roadbook-store.js";
 import { createElement } from "./utils.js";
 
 const REQUIRED_ELEMENT_IDS = [
@@ -15,8 +15,9 @@ export function createRoadbookView() {
 
   let store;
 
-  function initialize(roadbook) {
-    store = createRoadbookStore(roadbook);
+  function initialize(roadbookStore) {
+    store = roadbookStore;
+    const { roadbook } = store.getState();
     renderRoadbookHeader(roadbook);
     renderStageList(roadbook.days);
     renderState(store.getState());

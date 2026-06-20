@@ -1,5 +1,6 @@
 import { loadRoadbook, RoadbookLoadError } from "./data-loader.js";
-import { RoadbookDataError } from "./roadbook-store.js";
+import { createRoadbookMap } from "./map/map-adapter.js";
+import { createRoadbookStore, RoadbookDataError } from "./roadbook-store.js";
 import { createRoadbookView } from "./roadbook-view.js";
 
 const DATA_URL = "data/roadbook.json";
@@ -22,7 +23,17 @@ export async function bootstrap({ dataUrl = DATA_URL } = {}) {
   try {
     view = createRoadbookView();
     const roadbook = await loadRoadbook(dataUrl);
-    view.initialize(roadbook);
+    const store = createRoadbookStore(roadbook);
+    view.initialize(store);
+
+    const map = createRoadbookMap({
+      container: document.getElementById("roadbook-map"),
+      fallback: document.getElementById("map-fallback"),
+      status: document.getElementById("map-status")
+    });
+    map.renderRoadbook(store.getState().roadbook);
+    map.focusDay(store.getState().currentDay, { announce: false });
+    store.subscribe((state) => map.focusDay(state.currentDay));
   } catch (error) {
     console.error("Roadbook initialization failed", error);
     const message = getUserErrorMessage(error);

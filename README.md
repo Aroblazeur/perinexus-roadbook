@@ -4,6 +4,10 @@ Périnexus Roadbook est une application web sans framework pour consulter un
 roadbook d’itinérance à vélo. L’interface entière est générée depuis
 `data/roadbook.json` : aucune étape n’est écrite dans le HTML.
 
+Une carte Leaflet optionnelle présente les départs et arrivées disponibles. Elle
+consomme le même état normalisé que les cartes d’étape : le roadbook reste
+entièrement utilisable si Leaflet ou les coordonnées sont indisponibles.
+
 ## Prérequis
 
 - Node.js 20 ou une version plus récente.
@@ -64,6 +68,11 @@ Exemple minimal accepté :
   },
   "description": "Description de l’étape.",
   "gpx": "",
+  "route": {
+    "start": { "lat": 45.18, "lng": 5.72 },
+    "end": { "lat": 45.08, "lng": 5.77 },
+    "points": []
+  },
   "photos": [],
   "interest": [],
   "restaurants": [],
@@ -99,12 +108,34 @@ Champs principaux d’une étape :
 | `accommodation` | objet ou `null` | Nom et détails de l’hébergement |
 | `description` | chaîne | Présentation de l’étape |
 | `gpx` | chaîne | Chemin GPX réservé à un futur sprint |
+| `route` | objet | Coordonnées optionnelles de départ, d’arrivée et points futurs |
 | `photos` | tableau | Médias futurs |
 | `interest`, `restaurants`, `shops`, `water` | tableaux | Points utiles |
 | `variants`, `notes`, `warning` | tableaux | Informations complémentaires |
 
 Le contrat détaillé est documenté dans
 [`docs/data-model.md`](docs/data-model.md).
+
+## Ajouter des coordonnées à une étape
+
+Le champ `route` accepte deux coordonnées optionnelles et une liste de points
+réservée aux évolutions futures :
+
+```json
+"route": {
+  "start": { "lat": 45.1885, "lng": 5.7245 },
+  "end": { "lat": 45.085, "lng": 5.771 },
+  "points": []
+}
+```
+
+- `lat` doit être compris entre `-90` et `90`.
+- `lng` doit être compris entre `-180` et `180`.
+- `start`, `end` ou `route` peuvent être omis.
+- Une coordonnée invalide est ignorée sans interrompre l’application.
+
+La sélection d’une étape recentre automatiquement la carte lorsqu’au moins une
+coordonnée valide existe. Aucun fichier GPX n’est chargé au Sprint 4.
 
 ## Architecture
 
@@ -114,6 +145,7 @@ style.css                  Styles responsive
 data/roadbook.json         Source unique du contenu
 js/app.js                  Orchestration et messages d’erreur
 js/data-loader.js          Chargement HTTP et erreurs réseau/JSON
+js/map/map-adapter.js      Adaptateur cartographique et intégration Leaflet
 js/roadbook-store.js       Validation, normalisation et état
 js/card-factory.js         Création d’une carte d’étape
 js/roadbook-view.js        Rendu et interactions de l’interface
@@ -126,6 +158,7 @@ docs/                      Architecture, audit et feuille de route
 ## Documentation
 
 - [Revue du Sprint 3](docs/SPRINT3_REVIEW.md)
+- [Revue du Sprint 4](docs/SPRINT4_REVIEW.md)
 - [Modèle de données](docs/data-model.md)
 - [Feuille de route](docs/ROADMAP.md)
 - [Changelog](CHANGELOG.md)

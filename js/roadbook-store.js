@@ -54,6 +54,7 @@ function normalizeDay(day, index, ids) {
     accommodation: normalizeAccommodation(day.accommodation),
     description: asText(day.description),
     gpx: asText(day.gpx),
+    route: normalizeRoute(day.route),
     photos: freezeArray(day.photos),
     interest: freezeArray(day.interest),
     restaurants: freezeArray(day.restaurants),
@@ -63,6 +64,25 @@ function normalizeDay(day, index, ids) {
     notes: freezeArray(day.notes),
     warning: freezeArray(day.warning)
   });
+}
+
+function normalizeRoute(value) {
+  const route = value && typeof value === "object" ? value : {};
+  return Object.freeze({
+    start: normalizeCoordinate(route.start),
+    end: normalizeCoordinate(route.end),
+    points: Object.freeze(asArray(route.points).map(normalizeCoordinate).filter(Boolean))
+  });
+}
+
+function normalizeCoordinate(value) {
+  if (!value || typeof value !== "object") return null;
+  const lat = Number(value.lat);
+  const lng = Number(value.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+    return null;
+  }
+  return Object.freeze({ lat, lng });
 }
 
 function normalizeAccommodation(value) {
