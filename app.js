@@ -16,9 +16,11 @@ async function loadRoadbook() {
 
     try {
 
-        const response = await fetch("data/roadbook.json");
+        if (typeof loadRoadbookData !== "function") {
+            throw new Error("Loader indisponible");
+        }
 
-        roadbook = await response.json();
+        roadbook = await loadRoadbookData();
 
         updateSummary();
 
