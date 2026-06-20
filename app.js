@@ -31,7 +31,7 @@ async function loadRoadbook() {
     console.error("Chargement du roadbook impossible", error);
     elements["roadbook-info"].innerHTML = `
       <h2 id="roadbook-title">Roadbook indisponible</h2>
-      <p>Les donnÃ©es nâ€™ont pas pu Ãªtre chargÃ©es. VÃ©rifiez votre connexion puis rechargez la page.</p>`;
+      <p>Les donn\u00e9es n\u2019ont pas pu \u00eatre charg\u00e9es. V\u00e9rifiez votre connexion puis rechargez la page.</p>`;
     setNavigationDisabled(true);
   }
 }
@@ -58,18 +58,18 @@ function displayDay(index) {
   const day = roadbook.days[index];
   currentDay = index;
   elements["current-day"].textContent = `Jour ${index + 1} sur ${roadbook.days.length}`;
-  elements["stage-label"].textContent = `Ã‰tape ${index + 1}`;
+  elements["stage-label"].textContent = `\u00c9tape ${index + 1}`;
   elements["day-title"].textContent = day.title || `Jour ${index + 1}`;
-  elements.distance.textContent = `${day.distance ?? "â€”"} km`;
-  elements.elevation.textContent = `${day.elevation ?? "â€”"} m D+`;
-  elements.duration.textContent = day.duration || "â€”";
-  elements.description.textContent = day.description || "Aucune description pour cette Ã©tape.";
-  elements.supply.textContent = day.supply || "Non renseignÃ©";
-  elements.accommodation.textContent = day.accommodation || "Non renseignÃ©";
+  elements.distance.textContent = `${day.distance ?? "\u2014"} km`;
+  elements.elevation.textContent = `${day.elevation ?? "\u2014"} m D+`;
+  elements.duration.textContent = day.duration || "\u2014";
+  elements.description.textContent = day.description || "Aucune description pour cette \u00e9tape.";
+  elements.supply.textContent = day.supply || "Non renseign\u00e9";
+  elements.accommodation.textContent = day.accommodation || "Non renseign\u00e9";
   elements["progress-bar"].style.width = `${((index + 1) / roadbook.days.length) * 100}%`;
   updatePois(day.pois);
   updateButtons();
-  document.title = `${elements["day-title"].textContent} Â· Perinexus Roadbook`;
+  document.title = `${elements["day-title"].textContent} \u00b7 Perinexus Roadbook`;
 }
 
 function updatePois(pois = []) {
@@ -77,7 +77,7 @@ function updatePois(pois = []) {
   if (!Array.isArray(pois) || pois.length === 0) {
     const item = document.createElement("li");
     item.className = "empty";
-    item.textContent = "Aucun point renseignÃ©";
+    item.textContent = "Aucun point renseign\u00e9";
     elements.pois.append(item);
     return;
   }
