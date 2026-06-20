@@ -297,9 +297,14 @@ async function loadGoogleSheetRoadbook() {
 
 async function loadFallbackRoadbook() {
     async function loadNodeFallback(path) {
-        if (typeof window !== "undefined" || typeof require !== "function") {
+        const isNodeRuntime =
+            typeof process !== "undefined" &&
+            Boolean(process.versions && process.versions.node);
+
+        if (!isNodeRuntime || typeof require !== "function") {
             return null;
         }
+
         const fs = require("node:fs/promises");
         const nodePath = require("node:path");
         const absolutePath = nodePath.resolve(__dirname || process.cwd(), path);
@@ -347,6 +352,7 @@ async function loadRoadbookData() {
         try {
             return await loadFallbackRoadbook();
         } catch (fallbackError) {
+            // Preserve explicit HTTP status failures from Google Sheets when both sources fail.
             if (typeof error?.message === "string" && error.message.startsWith("HTTP ")) {
                 throw error;
             }
