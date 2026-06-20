@@ -148,11 +148,21 @@ function firstValue(record, candidates) {
     return null;
 }
 
+function firstValueByPrefix(record, prefix) {
+    const normalizedPrefix = normalizeHeader(prefix);
+    const key = Object.keys(record).find(item => item.startsWith(normalizedPrefix));
+    return key ? record[key] : null;
+}
+
 function buildAccommodation(record) {
+    const alternativesValue =
+        firstValue(record, ["hebergement alternatif", "hebergement alternative"]) ??
+        firstValueByPrefix(record, "hebergement alte");
+
     return {
         name: firstValue(record, ["hebergement", "hébergement"]),
         url: firstValue(record, ["site web de l'hebergement", "site web de l hebergement"]),
-        alternatives: splitMulti(firstValue(record, ["hebergement altenatif", "hebergement alternatif", "hebergement alternative"])),
+        alternatives: splitMulti(alternativesValue),
         houseRentals: splitMulti(firstValue(record, ["possibilite de location maison", "possibilité de location maison"]))
     };
 }
@@ -199,7 +209,7 @@ function mapVariante(record) {
         distanceExtra: toNumber(firstValue(record, ["distance supplementaire (km)", "distance supplémentaire (km)"])),
         elevationGainExtra: toNumber(firstValue(record, ["d+ supplementaire (m)", "d+ supplémentaire (m)"])),
         elevationLossExtra: toNumber(firstValue(record, ["d− supplementaire (m)", "d− supplémentaire (m)", "d- supplementaire (m)", "d- supplémentaire (m)"])),
-        pointOfInterest: firstValue(record, ["point d'interet", "point d’intérêt"]),
+        pointOfInterest: firstValue(record, ["point d'intérêt", "point d’intérêt"]),
         description: firstValue(record, ["description / photos"]),
         link: firstValue(record, ["lien"]),
         gpx: firstValue(record, ["gpx"]),
