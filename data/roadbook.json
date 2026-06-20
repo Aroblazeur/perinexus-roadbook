@@ -1,0 +1,37 @@
+{
+  "title": "Perinexus Ã  vÃ©lo",
+  "description": "Trois jours dâ€™itinÃ©rance Ã  vÃ©lo entre voies vertes, petites routes et panoramas.",
+  "days": [
+    {
+      "title": "Mise en jambes",
+      "distance": 48,
+      "elevation": 620,
+      "duration": "4 h 15",
+      "description": "Une premiÃ¨re Ã©tape progressive pour prendre le rythme, entre routes secondaires et voies vertes. La montÃ©e finale offre un beau point de vue sur la vallÃ©e.",
+      "accommodation": "Camping municipal â€” accueil jusquâ€™Ã  19 h",
+      "supply": "Boulangerie au km 12, supermarchÃ© au km 35 et fontaine au km 41",
+      "pois": ["Centre historique", "BelvÃ©dÃ¨re", "Voie verte"]
+    },
+    {
+      "title": "La grande traversÃ©e",
+      "distance": 63,
+      "elevation": 980,
+      "duration": "5 h 45",
+      "description": "Lâ€™Ã©tape reine du parcours, avec plusieurs ascensions rÃ©guliÃ¨res et une longue descente panoramique. Gardez de lâ€™Ã©nergie pour le dernier col.",
+      "accommodation": "GÃ®te dâ€™Ã©tape â€” dÃ®ner sur rÃ©servation",
+      "supply": "Ã‰picerie au km 18, restaurant au km 39 et point dâ€™eau au sommet",
+      "pois": ["Col principal", "Cascade", "Table dâ€™orientation"]
+    },
+    {
+      "title": "Cap sur lâ€™arrivÃ©e",
+      "distance": 42,
+      "elevation": 350,
+      "duration": "3 h 30",
+      "description": "Une derniÃ¨re journÃ©e plus roulante le long du lac, idÃ©ale pour profiter du paysage avant de rejoindre la destination et la gare.",
+      "accommodation": "HÃ´tel prÃ¨s de la gare â€” local vÃ©lo sÃ©curisÃ©",
+      "supply": "MarchÃ© au km 9, cafÃ© au km 27 et commerces Ã  lâ€™arrivÃ©e",
+      "pois": ["Lac", "MarchÃ© couvert", "Office de tourisme"]
+    }
+  ]
+}
+
