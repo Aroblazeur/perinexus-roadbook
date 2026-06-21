@@ -290,50 +290,54 @@ function renderAccommodation(accommodation) {
 
 function renderVariants(variants) {
     const section = document.getElementById("variants-section");
-    const count = document.getElementById("variants-count");
-    const list = document.getElementById("variants");
-    list.replaceChildren();
+    const content = document.getElementById("variant-content");
+    content.replaceChildren();
     section.hidden = variants.length === 0;
-    section.open = false;
-    count.textContent = variants.length ? ` (${variants.length})` : "";
 
-    variants.forEach(variant => {
-        const item = document.createElement("li");
-        const name = document.createElement("strong");
-        name.textContent = safeText(variant.name, "Variante");
-        item.appendChild(name);
-        const details = [
-            safeText(variant.type, ""),
-            Number.isFinite(variant.distanceExtra) ? `+${variant.distanceExtra} km` : "",
-            Number.isFinite(variant.elevationGainExtra) ? `D+ ${variant.elevationGainExtra} m` : "",
-            Number.isFinite(variant.elevationLossExtra) ? `D− ${variant.elevationLossExtra} m` : ""
-        ].filter(Boolean);
-        if (details.length) {
-            const text = document.createElement("p");
-            text.textContent = details.join(" · ");
-            item.appendChild(text);
-        }
-        if (variant.description) {
-            const description = document.createElement("p");
-            description.textContent = variant.description;
-            item.appendChild(description);
-        }
-        if (Array.isArray(variant.pointsOfInterest) && variant.pointsOfInterest.length) {
-            const poiHeading = document.createElement("p");
-            poiHeading.textContent = "Points d'intérêt :";
-            item.appendChild(poiHeading);
-            const poiList = document.createElement("ul");
-            variant.pointsOfInterest.forEach(poi => {
-                const poiItem = document.createElement("li");
-                poiItem.textContent = safeText(poi);
-                poiList.appendChild(poiItem);
-            });
-            item.appendChild(poiList);
-        }
-        appendGpxActions(item, variant.gpx, safeText(variant.name, "variante"));
-        appendResource(item, variant.link, "Ouvrir le lien de la variante", "terrain-button terrain-button--secondary");
-        list.appendChild(item);
-    });
+    if (variants.length === 0) return;
+
+    if (variants.length > 1) {
+        console.warn(
+            `[Roadbook] Plusieurs alternatives actives (${variants.length}) rattachées à la même étape. Seule la première est affichée : "${variants[0].name}".`
+        );
+    }
+
+    const variant = variants[0];
+
+    const name = document.createElement("strong");
+    name.textContent = safeText(variant.name, "Alternative");
+    content.appendChild(name);
+
+    const details = [
+        safeText(variant.type, ""),
+        Number.isFinite(variant.distanceExtra) ? `+${variant.distanceExtra} km` : "",
+        Number.isFinite(variant.elevationGainExtra) ? `D+ ${variant.elevationGainExtra} m` : "",
+        Number.isFinite(variant.elevationLossExtra) ? `D− ${variant.elevationLossExtra} m` : ""
+    ].filter(Boolean);
+    if (details.length) {
+        const text = document.createElement("p");
+        text.textContent = details.join(" · ");
+        content.appendChild(text);
+    }
+    if (variant.description) {
+        const description = document.createElement("p");
+        description.textContent = variant.description;
+        content.appendChild(description);
+    }
+    if (Array.isArray(variant.pointsOfInterest) && variant.pointsOfInterest.length) {
+        const poiHeading = document.createElement("p");
+        poiHeading.textContent = "Points d'intérêt :";
+        content.appendChild(poiHeading);
+        const poiList = document.createElement("ul");
+        variant.pointsOfInterest.forEach(poi => {
+            const poiItem = document.createElement("li");
+            poiItem.textContent = safeText(poi);
+            poiList.appendChild(poiItem);
+        });
+        content.appendChild(poiList);
+    }
+    appendGpxActions(content, variant.gpx, safeText(variant.name, "alternative"));
+    appendResource(content, variant.link, "Ouvrir le lien de l'alternative", "terrain-button terrain-button--secondary");
 }
 
 function renderStageGpx(url, mapVisible = false) {

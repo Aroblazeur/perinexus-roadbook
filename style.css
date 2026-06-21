@@ -368,19 +368,6 @@ li{
     width:100%;
 }
 
-.variants-card summary{
-    min-height:52px;
-    cursor:pointer;
-    color:var(--primary-dark);
-    font-size:1.35rem;
-    font-weight:700;
-    line-height:52px;
-}
-
-.variants-card[open] summary{
-    margin-bottom:18px;
-}
-
 .map-card{
     overflow:hidden;
 }
@@ -503,11 +490,6 @@ footer{
     .gpx-actions{
         display:grid;
         gap:8px;
-    }
-
-    .variants-card summary{
-        min-height:56px;
-        line-height:56px;
     }
 
     #stage-map-embed{
