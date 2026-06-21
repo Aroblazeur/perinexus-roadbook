@@ -24,7 +24,6 @@ const REQUIRED_ETAPES_HEADERS = [
 ];
 
 const REQUIRED_VARIANTES_HEADERS = [
-    "etape principale associe",
     "nom variante"
 ];
 
@@ -232,8 +231,24 @@ function mapEtape(record, index) {
 }
 
 function mapVariante(record) {
+    const stageReference =
+        firstValue(record, [
+            "etape principale associe",
+            "etape principale associé",
+            "etape principale associee"
+        ]) ?? firstValueByPrefix(record, "etape principale associ");
+
+    const enabledRaw =
+        firstValue(record, [
+            "activee",
+            "activée",
+            "active",
+            "activé",
+            "actif"
+        ]) ?? firstValueByPrefix(record, "activ");
+
     return {
-        stageReference: firstValue(record, ["etape principale associe", "etape principale associé"]),
+        stageReference,
         day: toNumber(firstValue(record, ["jour"])),
         name: firstValue(record, ["nom variante"]),
         type: firstValue(record, ["type"]),
@@ -244,7 +259,7 @@ function mapVariante(record) {
         description: firstValue(record, ["description / photos"]),
         link: firstValue(record, ["lien"]),
         gpx: firstValue(record, ["gpx"]),
-        enabled: toBoolean(firstValue(record, ["activee", "activée"]))
+        enabled: toBoolean(enabledRaw)
     };
 }
 
@@ -260,21 +275,34 @@ function stageMatchKey(stage) {
 
 function attachVariants(stages, variants) {
     const byKey = new Map();
-
     stages.forEach(stage => {
         stageMatchKey(stage).forEach(key => {
             if (!byKey.has(key)) byKey.set(key, stage);
         });
     });
 
+    const byNumber = new Map();
+    stages.forEach(stage => {
+        if (stage.stage !== null) byNumber.set(stage.stage, stage);
+    });
+
     let inheritedReference = null;
+    let attached = 0;
+    let disabled = 0;
+    let unmatched = 0;
 
     variants.forEach(variant => {
         if (variant.stageReference) inheritedReference = variant.stageReference;
-        if (!variant.enabled) return;
+
+        if (!variant.enabled) {
+            disabled++;
+            return;
+        }
+
+        const effectiveReference = variant.stageReference || inheritedReference;
 
         const referenceKeys = [
-            normalizeHeader(variant.stageReference || inheritedReference),
+            effectiveReference ? normalizeHeader(effectiveReference) : null,
             variant.day ? normalizeHeader(String(variant.day)) : null
         ].filter(Boolean);
 
@@ -286,10 +314,33 @@ function attachVariants(stages, variants) {
             }
         }
 
-        if (!stage) return;
+        if (!stage && effectiveReference) {
+            const numMatch = String(effectiveReference).match(/\d+/);
+            if (numMatch) {
+                const num = parseInt(numMatch[0], 10);
+                if (byNumber.has(num)) stage = byNumber.get(num);
+            }
+        }
+
+        if (!stage) {
+            unmatched++;
+            return;
+        }
+
         stage.variants.push(variant);
         stage.pois.push(...variant.pointsOfInterest);
+        attached++;
     });
+
+    const active = variants.length - disabled;
+    const ignored = disabled + unmatched;
+    console.log(
+        `[Roadbook] Étapes chargées : ${stages.length} | ` +
+        `Variantes lues : ${variants.length} | ` +
+        `Variantes actives : ${active} | ` +
+        `Variantes rattachées : ${attached} | ` +
+        `Variantes ignorées : ${ignored}`
+    );
 }
 
 async function fetchCsv(url) {
