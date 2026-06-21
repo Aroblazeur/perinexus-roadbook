@@ -342,31 +342,43 @@ function buildRoadbook(etapesRows, variantesRows) {
         groups.get(key).push(row);
     });
 
-    const principaleRows = [];
-    const etapeVarianteRows = [];
+    const stages = [];
+    const alternativesFromEtapes = [];
 
-    groups.forEach(rows => {
+    const stageNumberFromRow = row => toNumber(firstValue(row, ["numero etape"]));
+
+    groups.forEach((rows, key) => {
         // Choose the row whose Type (normalised) contains "principale", else the first row
         const mainIndex = Math.max(0, rows.findIndex(row =>
             normalizeHeader(firstValue(row, ["type"]) || "").includes("principale")
         ));
 
-        principaleRows.push(rows[mainIndex]);
+        const mainRow = rows[mainIndex];
+        const groupStageNumber =
+            stageNumberFromRow(mainRow) ??
+            (key === NO_STAGE_NUMBER_KEY ? null : toNumber(key));
+
+        stages.push(mapEtape(mainRow));
+
         rows.forEach((row, i) => {
-            if (i !== mainIndex) etapeVarianteRows.push(row);
+            if (i === mainIndex) return;
+            const variant = mapEtapeVarianteFromEtape(row);
+            variant.stageReference =
+                stageNumberFromRow(row) ??
+                groupStageNumber;
+            alternativesFromEtapes.push(variant);
         });
     });
 
     console.log(`[Roadbook] Groupes (étapes uniques) : ${groups.size}`);
-    console.log(`[Roadbook] Lignes principales choisies : ${principaleRows.length}`);
-    console.log(`[Roadbook] Lignes alternatives (étapes) : ${etapeVarianteRows.length}`);
+    console.log(`[Roadbook] Lignes principales choisies : ${stages.length}`);
+    console.log(`[Roadbook] Lignes alternatives (étapes) : ${alternativesFromEtapes.length}`);
     console.log(`[Roadbook] Lignes variantes (feuille variantes) : ${variantesRows.length}`);
 
-    const stages = principaleRows.map(mapEtape);
-    const etapeVariantes = etapeVarianteRows.map(mapEtapeVarianteFromEtape);
-    const sheetVariantes = variantesRows.map(mapVariante);
+    const variantesFromSecondSheet = variantesRows.map(mapVariante);
 
-    attachVariants(stages, [...etapeVariantes, ...sheetVariantes]);
+    attachVariants(stages, alternativesFromEtapes);
+    attachVariants(stages, variantesFromSecondSheet);
 
     return {
         title: "Perinexus à vélo",
