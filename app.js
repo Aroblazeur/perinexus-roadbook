@@ -120,10 +120,10 @@ function displayDay(index) {
     if (!day) return;
 
     document.getElementById("current-day").textContent =
-        `Jour ${index + 1}`;
+        `Étape ${day.stage || (index + 1)}`;
 
     document.getElementById("day-title").textContent =
-        safeText(day.title, `Étape ${index + 1}`);
+        safeText(day.title, `Étape ${day.stage || (index + 1)}`);
 
     document.getElementById("distance").textContent =
         formatMetric(day.distance, "km");
