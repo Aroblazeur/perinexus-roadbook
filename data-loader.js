@@ -250,7 +250,7 @@ function mapEtapeVarianteFromEtape(record) {
         stageReference: stageNumber,
         day: toNumber(firstValue(record, ["jour"])),
         name: routeLabel || `Variante étape ${stageNumber ?? "?"}`,
-        type: "variante",
+        type: firstValue(record, ["type"]) || "variante",
         departure,
         arrival,
         distance,
