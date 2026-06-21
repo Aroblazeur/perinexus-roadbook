@@ -193,7 +193,7 @@ function buildAccommodation(record) {
 }
 
 function mapEtape(record, index) {
-    const stageNumber = toNumber(firstValue(record, ["etape", "étape"]));
+    const stageNumber = extractStageNumber(firstValue(record, ["etape", "étape"]));
     const dayLabel = firstValue(record, ["jour"]);
     const departure = firstValue(record, ["depart", "départ"]);
     const arrival = firstValue(record, ["arrivee", "arrivée"]);
@@ -305,6 +305,55 @@ function attachVariants(stages, variants) {
     );
 }
 
+function getEtapeLabel(record) {
+    const raw = firstValue(record, ["etape", "étape"]);
+    const str = normalizeHeader(raw || "");
+    if (str.includes("variante courte")) return "variante_courte";
+    if (str.includes("principale")) return "principale";
+    return null;
+}
+
+function mapEtapeAsVariante(record) {
+    const stageNumber = extractStageNumber(firstValue(record, ["etape", "étape"]));
+    const departure = firstValue(record, ["depart", "départ"]);
+    const arrival = firstValue(record, ["arrivee", "arrivée"]);
+    const distance = toNumber(firstValue(record, ["distance (km)"]));
+    const elevationGain = toNumber(firstValue(record, ["d+ (m)"]));
+    const elevationLoss = toNumber(firstValue(record, ["d− (m)", "d- (m)"]));
+    const gpx = firstValue(record, ["gpx"]);
+    const pois = splitMulti(firstValue(record, ["point d'intérêt", "point d'interet"]));
+    const notes = firstValue(record, ["notes"]);
+    const mapEmbedUrl = sanitizeMapEmbedUrl(firstValue(record, ["lien d'integration de map"]));
+    const routeLabel = [departure, arrival].filter(Boolean).join(" → ");
+
+    const descriptionParts = [];
+    if (Number.isFinite(distance)) descriptionParts.push(`Distance : ${distance} km`);
+    if (Number.isFinite(elevationGain)) descriptionParts.push(`D+ : ${elevationGain} m`);
+    if (Number.isFinite(elevationLoss)) descriptionParts.push(`D− : ${elevationLoss} m`);
+    if (notes) descriptionParts.push(notes);
+
+    return {
+        stageReference: stageNumber !== null ? String(stageNumber) : "",
+        day: toNumber(firstValue(record, ["jour"])),
+        name: `Variante courte${routeLabel ? ` — ${routeLabel}` : ""}`,
+        type: "Variante courte",
+        departure,
+        arrival,
+        distance,
+        elevationGain,
+        elevationLoss,
+        distanceExtra: null,
+        elevationGainExtra: null,
+        elevationLossExtra: null,
+        pointsOfInterest: pois,
+        description: descriptionParts.length ? descriptionParts.join(" · ") : null,
+        link: null,
+        gpx,
+        mapEmbedUrl,
+        enabled: true
+    };
+}
+
 async function fetchCsv(url) {
     let response;
     try {
@@ -338,9 +387,20 @@ async function loadGoogleSheetRoadbook() {
     ensureSchema(etapesRows, REQUIRED_ETAPES_HEADERS);
     ensureSchema(variantesRows, REQUIRED_VARIANTES_HEADERS);
 
-    const stages = etapesRows.map(mapEtape);
+    const shortVariantRows = etapesRows.filter(row => getEtapeLabel(row) === "variante_courte");
+    const mainEtapesRows = etapesRows.filter(row => getEtapeLabel(row) !== "variante_courte");
+
+    if (shortVariantRows.length > 0) {
+        console.log(`[Roadbook] ${shortVariantRows.length} variante(s) courte(s) détectée(s) dans l'onglet etapes principales, traitée(s) comme alternatives.`);
+    }
+
+    const stages = mainEtapesRows.map(mapEtape);
+    const shortVariants = shortVariantRows.map(mapEtapeAsVariante);
     const variants = variantesRows.map(mapVariante);
 
+    if (shortVariants.length > 0) {
+        attachVariants(stages, shortVariants);
+    }
     attachVariants(stages, variants);
 
     return {
