@@ -115,7 +115,7 @@ function renderStageMapEmbed(mapEmbedUrl, gpxUrl) {
     if (!viewer || typeof viewer.renderEmbed !== "function") {
         document.getElementById("map-embed-section").hidden = true;
         renderMapGpxActions(false, null);
-        return;
+        return false;
     }
     const mapVisible = viewer.renderEmbed(mapEmbedUrl);
     const resolvedGpx = viewer.resolveGpxUrl?.(gpxUrl) || null;
@@ -237,7 +237,7 @@ function renderVariants(variants) {
     });
 }
 
-function renderStageGpx(url, mapVisible) {
+function renderStageGpx(url, mapVisible = false) {
     const section = document.getElementById("terrain-navigation");
     const downloadLink = document.getElementById("terrain-gpx-download");
     const resolvedUrl = window.roadbookMapViewer?.resolveGpxUrl?.(url);
