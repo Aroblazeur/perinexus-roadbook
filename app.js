@@ -336,7 +336,7 @@ function renderVariants(variants) {
         });
         content.appendChild(poiList);
     }
-    appendGpxActions(content, variant.gpx, safeText(variant.name, "alternative"));
+    appendGpxActions(content, variant.gpx, safeText(variant.name, "Alternative"));
     appendResource(content, variant.link, "Ouvrir le lien de l'alternative", "terrain-button terrain-button--secondary");
 }
 
