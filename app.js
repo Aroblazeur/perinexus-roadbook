@@ -9,6 +9,7 @@
 let roadbook = null;
 let currentDay = 0;
 let accommodationEnrichmentIndex = new Map();
+let poiEnrichmentIndex = new Map();
 
 /**
  * Chargement des données
@@ -17,7 +18,8 @@ async function initializeRoadbook() {
 
     try {
 
-        const enrichmentPromise = loadOptionalAccommodationEnrichment();
+        const accommodationEnrichmentPromise = loadOptionalAccommodationEnrichment();
+        const poiEnrichmentPromise = loadOptionalPoiEnrichment();
 
         if (typeof loadRoadbook !== "function") {
             throw new Error("Loader indisponible");
@@ -33,8 +35,12 @@ async function initializeRoadbook() {
 
         displayDay(currentDay);
 
-        accommodationEnrichmentIndex = await enrichmentPromise;
+        [accommodationEnrichmentIndex, poiEnrichmentIndex] = await Promise.all([
+            accommodationEnrichmentPromise,
+            poiEnrichmentPromise
+        ]);
         renderCurrentAccommodation();
+        renderCurrentPois();
 
     } catch (error) {
 
@@ -65,6 +71,20 @@ function renderCurrentAccommodation() {
     if (!roadbook || !Array.isArray(roadbook.days)) return;
     const day = roadbook.days[currentDay];
     if (day) renderAccommodation(day.accommodation);
+}
+
+function loadOptionalPoiEnrichment() {
+    const loader = window.poiEnrichmentLoader;
+    if (!loader || typeof loader.loadPoiEnrichment !== "function") {
+        return Promise.resolve(new Map());
+    }
+    return loader.loadPoiEnrichment();
+}
+
+function renderCurrentPois() {
+    if (!roadbook || !Array.isArray(roadbook.days)) return;
+    const day = roadbook.days[currentDay];
+    if (day) updatePois(day);
 }
 
 /**
@@ -178,15 +198,56 @@ function updatePois(day) {
     }
 
     pois.forEach(poi => {
-
+        const name = safeText(typeof poi === "object" ? poi?.name || poi?.label : poi);
+        const metadata = findPoiEnrichment(name);
         const li = document.createElement("li");
 
-        li.textContent = safeText(typeof poi === "object" ? poi.name || poi.label : poi);
+        if (!metadata) {
+            li.textContent = name;
+            list.appendChild(li);
+            return;
+        }
 
+        li.className = "poi-card";
+
+        if (metadata.image) {
+            const image = document.createElement("img");
+            image.className = "poi-card__image";
+            image.src = metadata.image;
+            image.loading = "lazy";
+            image.alt = `Photo de ${metadata.name || name}`;
+            image.addEventListener("error", () => {
+                image.hidden = true;
+                image.removeAttribute("src");
+            }, { once: true });
+            li.appendChild(image);
+        }
+
+        const content = document.createElement("div");
+        content.className = "poi-card__content";
+        const title = document.createElement("strong");
+        title.className = "poi-card__name";
+        title.textContent = metadata.name || name;
+        content.appendChild(title);
+
+        if (metadata.description) {
+            const description = document.createElement("p");
+            description.className = "poi-card__description";
+            description.textContent = metadata.description;
+            content.appendChild(description);
+        }
+
+        li.appendChild(content);
         list.appendChild(li);
-
     });
 
+}
+
+function findPoiEnrichment(name) {
+    const loader = window.poiEnrichmentLoader;
+    if (!loader || typeof loader.normalizePoiName !== "function") return null;
+    const key = loader.normalizePoiName(name);
+    return key ? poiEnrichmentIndex.get(key) || null : null;
 }
 
 function renderFieldNavigation(day, stageGpxUrl, mapVisible) {
