@@ -353,7 +353,7 @@ function renderVariants(variants) {
         const name = document.createElement("h3");
         name.className = "variant-title";
         name.textContent = variantDisplayLabel(variant);
-        const titleId = `variant-title-${index + 1}`;
+        const titleId = `variant-title-${index}`;
         name.id = titleId;
         block.setAttribute("aria-labelledby", titleId);
         block.appendChild(name);
