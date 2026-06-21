@@ -290,6 +290,19 @@ function renderAccommodation(accommodation) {
     appendResourceList(container, "Locations maison", accommodation.houseRentals);
 }
 
+function isVarianteCourte(type) {
+    if (!type) return false;
+    const normalized = String(type).trim().toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    return normalized.includes("courte");
+}
+
+function variantDisplayLabel(variant) {
+    return isVarianteCourte(variant.type)
+        ? "Variante courte"
+        : safeText(variant.name, "Alternative");
+}
+
 function renderVariants(variants) {
     const section = document.getElementById("variants-section");
     const content = document.getElementById("variant-content");
@@ -298,48 +311,69 @@ function renderVariants(variants) {
 
     if (variants.length === 0) return;
 
-    if (variants.length > 1) {
-        console.warn(
-            `[Roadbook] Plusieurs alternatives actives (${variants.length}) rattachées à la même étape. Seule la première est affichée : "${variants[0].name}".`
-        );
-    }
+    variants.forEach((variant, index) => {
+        if (index > 0) {
+            const separator = document.createElement("hr");
+            separator.className = "variant-separator";
+            content.appendChild(separator);
+        }
 
-    const variant = variants[0];
+        const block = document.createElement("div");
+        block.className = "variant-block";
 
-    const name = document.createElement("strong");
-    name.textContent = safeText(variant.name, "Alternative");
-    content.appendChild(name);
+        const courte = isVarianteCourte(variant.type);
 
-    const details = [
-        safeText(variant.type, ""),
-        Number.isFinite(variant.distanceExtra) ? `+${variant.distanceExtra} km` : "",
-        Number.isFinite(variant.elevationGainExtra) ? `D+ ${variant.elevationGainExtra} m` : "",
-        Number.isFinite(variant.elevationLossExtra) ? `D− ${variant.elevationLossExtra} m` : ""
-    ].filter(Boolean);
-    if (details.length) {
-        const text = document.createElement("p");
-        text.textContent = details.join(" · ");
-        content.appendChild(text);
-    }
-    if (variant.description) {
-        const description = document.createElement("p");
-        description.textContent = variant.description;
-        content.appendChild(description);
-    }
-    if (Array.isArray(variant.pointsOfInterest) && variant.pointsOfInterest.length) {
-        const poiHeading = document.createElement("p");
-        poiHeading.textContent = "Points d'intérêt :";
-        content.appendChild(poiHeading);
-        const poiList = document.createElement("ul");
-        variant.pointsOfInterest.forEach(poi => {
-            const poiItem = document.createElement("li");
-            poiItem.textContent = safeText(poi);
-            poiList.appendChild(poiItem);
-        });
-        content.appendChild(poiList);
-    }
-    appendGpxActions(content, variant.gpx, safeText(variant.name, "Alternative"));
-    appendResource(content, variant.link, "Ouvrir le lien de l'alternative", "terrain-button terrain-button--secondary");
+        const name = document.createElement("strong");
+        name.textContent = variantDisplayLabel(variant);
+        block.appendChild(name);
+
+        if (courte && variant.name) {
+            const subtitle = document.createElement("p");
+            subtitle.className = "variant-subtitle";
+            subtitle.textContent = safeText(variant.name);
+            block.appendChild(subtitle);
+        }
+
+        const details = [];
+        if (!courte && variant.type) details.push(safeText(variant.type));
+        if (Number.isFinite(variant.distance)) details.push(`Distance : ${variant.distance} km`);
+        if (Number.isFinite(variant.elevationGain)) details.push(`D+ ${variant.elevationGain} m`);
+        if (Number.isFinite(variant.elevationLoss)) details.push(`D− ${variant.elevationLoss} m`);
+        if (Number.isFinite(variant.distanceExtra)) details.push(`Écart distance : +${variant.distanceExtra} km`);
+        if (Number.isFinite(variant.elevationGainExtra)) details.push(`Écart D+ : ${variant.elevationGainExtra} m`);
+        if (Number.isFinite(variant.elevationLossExtra)) details.push(`Écart D− : ${variant.elevationLossExtra} m`);
+        if (variant.departure) details.push(`Départ : ${variant.departure}`);
+        if (variant.arrival) details.push(`Arrivée : ${variant.arrival}`);
+        if (details.length) {
+            const text = document.createElement("p");
+            text.textContent = details.join(" · ");
+            block.appendChild(text);
+        }
+
+        if (variant.description) {
+            const description = document.createElement("p");
+            description.textContent = variant.description;
+            block.appendChild(description);
+        }
+
+        if (Array.isArray(variant.pointsOfInterest) && variant.pointsOfInterest.length) {
+            const poiHeading = document.createElement("p");
+            poiHeading.textContent = "Points d'intérêt :";
+            block.appendChild(poiHeading);
+            const poiList = document.createElement("ul");
+            variant.pointsOfInterest.forEach(poi => {
+                const poiItem = document.createElement("li");
+                poiItem.textContent = safeText(poi);
+                poiList.appendChild(poiItem);
+            });
+            block.appendChild(poiList);
+        }
+
+        appendGpxActions(block, variant.gpx, variantDisplayLabel(variant));
+        appendResource(block, variant.link, "Ouvrir le lien de l'alternative", "terrain-button terrain-button--secondary");
+
+        content.appendChild(block);
+    });
 }
 
 function resolveStageGpxUrl(url) {
