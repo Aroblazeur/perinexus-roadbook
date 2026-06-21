@@ -11,6 +11,11 @@
         const section = document.getElementById("map-section");
         const container = document.getElementById("stage-map");
         const status = document.getElementById("map-status");
+
+        if (!section || !container || !status) {
+            console.error("[Roadbook map] Conteneurs de carte introuvables.");
+            return false;
+        }
         clear();
 
         if (!isSafeUrl(url)) {
@@ -24,7 +29,9 @@
         status.textContent = "Chargement de la trace…";
 
         if (!isLeafletAvailable()) {
-            showError(container, status, "La carte interactive n’est pas disponible.");
+            const message = "Leaflet n’est pas disponible. Vérifiez le chargement du script CDN.";
+            console.error(`[Roadbook map] ${message}`);
+            showError(container, status, message);
             return false;
         }
 
@@ -40,7 +47,9 @@
             return true;
         } catch (error) {
             if (error?.name === "AbortError" || currentRender !== renderId) return false;
-            showError(container, status, error?.message || "La trace GPX ne peut pas être affichée.");
+            const message = error?.message || "La trace GPX ne peut pas être affichée.";
+            console.error("[Roadbook map] Échec du chargement GPX.", { url, reason: message });
+            showError(container, status, message);
             return false;
         }
     }
@@ -71,17 +80,26 @@
     async function loadTrace(url, fetchImpl, signal) {
         if (traceCache.has(url)) return traceCache.get(url);
         if (typeof fetchImpl !== "function") throw new Error("La trace GPX est inaccessible hors connexion.");
+        if (isMapyShareUrl(url)) {
+            throw new Error("Ce lien Mapy est une page de partage, pas un fichier GPX direct. Utilisez une URL vers un fichier .gpx.");
+        }
 
         let response;
         try {
             response = await fetchImpl(url, { signal, headers: { Accept: "application/gpx+xml, application/xml, text/xml" } });
         } catch (error) {
             if (error?.name === "AbortError") throw error;
-            throw new Error("La trace GPX ne peut pas être téléchargée.");
+            throw new Error("La trace GPX ne peut pas être téléchargée depuis le navigateur (réseau ou CORS).");
         }
         if (!response.ok) throw new Error(`La trace GPX est indisponible (HTTP ${response.status}).`);
 
-        const points = parseGpx(await response.text());
+        const contentType = response.headers?.get?.("content-type") || "";
+        const source = await response.text();
+        if (/text\/html/i.test(contentType) || /^\s*<!doctype\s+html/i.test(source) || /^\s*<html[\s>]/i.test(source)) {
+            throw new Error("Le lien fourni renvoie une page web, pas un fichier GPX direct.");
+        }
+
+        const points = parseGpx(source);
         traceCache.set(url, points);
         return points;
     }
@@ -140,6 +158,15 @@
 
     function isLeafletAvailable() {
         return global.L && typeof global.L.map === "function" && typeof global.L.polyline === "function";
+    }
+
+    function isMapyShareUrl(value) {
+        try {
+            const url = new URL(value, global.location.href);
+            return /(^|\.)mapy\.(?:com|cz)$/i.test(url.hostname) && /^\/s\//i.test(url.pathname);
+        } catch (error) {
+            return false;
+        }
     }
 
     function isSafeUrl(value) {
