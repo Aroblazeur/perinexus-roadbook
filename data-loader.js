@@ -199,6 +199,7 @@ function mapEtape(record, index) {
     const departure = firstValue(record, ["depart", "départ"]);
     const arrival = firstValue(record, ["arrivee", "arrivée"]);
     const notes = firstValue(record, ["notes"]);
+    const pois = splitMulti(firstValue(record, ["point d'intérêt", "point d'interet"]));
     const gpx = firstValue(record, ["gpx"]);
     const mapEmbedUrl = sanitizeMapEmbedUrl(firstValue(record, ["lien d'integration de map"]));
     const distance = toNumber(firstValue(record, ["distance (km)"]));
@@ -225,7 +226,7 @@ function mapEtape(record, index) {
         duration: "",
         description: "",
         noteItems: splitMulti(notes),
-        pois: [],
+        pois,
         legacyAccommodation: accommodation.name || ""
     };
 }
