@@ -345,6 +345,8 @@ function buildRoadbook(etapesRows, variantesRows) {
     const stages = [];
     const alternativesFromEtapes = [];
 
+    const stageNumberFromRow = row => toNumber(firstValue(row, ["numero etape"]));
+
     groups.forEach((rows, key) => {
         // Choose the row whose Type (normalised) contains "principale", else the first row
         const mainIndex = Math.max(0, rows.findIndex(row =>
@@ -353,7 +355,7 @@ function buildRoadbook(etapesRows, variantesRows) {
 
         const mainRow = rows[mainIndex];
         const groupStageNumber =
-            toNumber(firstValue(mainRow, ["numero etape"])) ??
+            stageNumberFromRow(mainRow) ??
             (key === NO_STAGE_NUMBER_KEY ? null : toNumber(key));
 
         stages.push(mapEtape(mainRow));
@@ -362,7 +364,7 @@ function buildRoadbook(etapesRows, variantesRows) {
             if (i === mainIndex) return;
             const variant = mapEtapeVarianteFromEtape(row);
             variant.stageReference =
-                toNumber(firstValue(row, ["numero etape"])) ??
+                stageNumberFromRow(row) ??
                 groupStageNumber;
             alternativesFromEtapes.push(variant);
         });
