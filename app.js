@@ -335,6 +335,30 @@ function variantDisplayLabel(variant) {
         : safeText(variant.name, "Alternative");
 }
 
+function variantTitleIdBase(variant) {
+    const source = JSON.stringify({
+        type: variant?.type || "",
+        name: variant?.name || "",
+        departure: variant?.departure || "",
+        arrival: variant?.arrival || "",
+        distance: variant?.distance ?? "",
+        elevationGain: variant?.elevationGain ?? "",
+        elevationLoss: variant?.elevationLoss ?? "",
+        distanceExtra: variant?.distanceExtra ?? "",
+        elevationGainExtra: variant?.elevationGainExtra ?? "",
+        elevationLossExtra: variant?.elevationLossExtra ?? "",
+        description: variant?.description || "",
+        link: variant?.link || "",
+        gpx: variant?.gpx || ""
+    });
+    let hash = 0;
+    for (let index = 0; index < source.length; index += 1) {
+        hash = ((hash << 5) - hash) + source.charCodeAt(index);
+        hash |= 0;
+    }
+    return `variant-title-${Math.abs(hash).toString(36)}`;
+}
+
 function renderVariants(variants) {
     const section = document.getElementById("variants-section");
     const content = document.getElementById("variant-content");
@@ -344,7 +368,9 @@ function renderVariants(variants) {
 
     if (variants.length === 0) return;
 
-    variants.forEach((variant, index) => {
+    const usedTitleIds = new Set();
+
+    variants.forEach(variant => {
         const block = document.createElement("article");
         block.className = "variant-block variant-card";
 
@@ -353,7 +379,14 @@ function renderVariants(variants) {
         const name = document.createElement("h3");
         name.className = "variant-title";
         name.textContent = variantDisplayLabel(variant);
-        const titleId = `variant-title-${index}`;
+        const baseTitleId = variantTitleIdBase(variant);
+        let titleId = baseTitleId;
+        let duplicateIndex = 2;
+        while (usedTitleIds.has(titleId)) {
+            titleId = `${baseTitleId}-${duplicateIndex}`;
+            duplicateIndex += 1;
+        }
+        usedTitleIds.add(titleId);
         name.id = titleId;
         block.setAttribute("aria-labelledby", titleId);
         block.appendChild(name);

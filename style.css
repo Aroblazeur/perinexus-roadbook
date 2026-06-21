@@ -18,6 +18,7 @@
     --shadow: 0 4px 12px rgba(0,0,0,.08);
 
     --radius: 12px;
+    --variant-title-size: 1.05rem;
 
     --max-width: 1100px;
 }
@@ -458,7 +459,7 @@ footer{
 
 .variant-title {
     margin: 0 0 4px;
-    font-size: 1.05rem;
+    font-size: var(--variant-title-size);
 }
 
 .variant-subtitle {
