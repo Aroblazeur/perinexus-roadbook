@@ -2,6 +2,7 @@
   "name": "perinexus-roadbook",
   "private": true,
   "scripts": {
-    "enrich:accommodations": "node scripts/enrich-accommodations.js"
+    "enrich:accommodations": "node scripts/enrich-accommodations.js",
+    "enrich:pois": "node scripts/enrich-pois.js"
   }
 }

@@ -1,0 +1,73 @@
+{
+  "generatedAt": "2026-06-21T19:32:16.732Z",
+  "items": [
+    {
+      "name": "Voie Verte du Carrilet",
+      "image": "",
+      "description": "bicycle path Olot-Girona-Sant Feliu de Guixols",
+      "coordinates": null,
+      "source": "wikidata",
+      "status": "ok"
+    },
+    {
+      "name": "Platja de la rostella",
+      "image": "",
+      "description": "platja a Roses",
+      "coordinates": {
+        "lat": 42.24401,
+        "lng": 3.22605
+      },
+      "source": "wikidata",
+      "status": "ok"
+    },
+    {
+      "name": "Platja Boquelles",
+      "image": "",
+      "description": "",
+      "coordinates": null,
+      "source": "wikidata",
+      "status": "not_found"
+    },
+    {
+      "name": "Platja d’en talladifins",
+      "image": "",
+      "description": "",
+      "coordinates": null,
+      "source": "wikidata",
+      "status": "not_found"
+    },
+    {
+      "name": "Cala de L'Illa Roja",
+      "image": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Illa%20roja%20gr92.JPG",
+      "description": "beach in Begur",
+      "coordinates": {
+        "lat": 41.97702,
+        "lng": 3.21064
+      },
+      "source": "wikidata",
+      "status": "ok"
+    },
+    {
+      "name": "Platja Fonda",
+      "image": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Platja%20Fonda%20de%20Begur.jpg",
+      "description": "platja a Begur",
+      "coordinates": {
+        "lat": 41.94185,
+        "lng": 3.21734
+      },
+      "source": "wikidata",
+      "status": "ok"
+    },
+    {
+      "name": "Platja D'En Gotes",
+      "image": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Cala%20d'Aigua%20Xelida%2C%20Tamariu%2C%20Palafrugell%2C%20Costa%20Brava%2C%20Catalunya.jpg",
+      "description": "plage en Espagne",
+      "coordinates": {
+        "lat": 41.921600000157,
+        "lng": 3.2154999995888
+      },
+      "source": "wikidata",
+      "status": "ok"
+    }
+  ]
+}
