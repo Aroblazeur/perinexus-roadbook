@@ -10,6 +10,7 @@ let roadbook = null;
 let currentDay = 0;
 let accommodationEnrichmentIndex = new Map();
 let poiEnrichmentIndex = new Map();
+const VARIANT_TITLE_HASH_MULTIPLIER = 31;
 
 /**
  * Chargement des données
@@ -351,12 +352,16 @@ function variantTitleIdBase(variant) {
         link: variant?.link || "",
         gpx: variant?.gpx || ""
     });
+    return `variant-title-${hashTextToBase36(source)}`;
+}
+
+function hashTextToBase36(value) {
+    const text = String(value || "");
     let hash = 0;
-    for (let index = 0; index < source.length; index += 1) {
-        hash = ((hash << 5) - hash) + source.charCodeAt(index);
-        hash |= 0;
+    for (let index = 0; index < text.length; index += 1) {
+        hash = ((hash * VARIANT_TITLE_HASH_MULTIPLIER) + text.charCodeAt(index)) >>> 0;
     }
-    return `variant-title-${Math.abs(hash).toString(36)}`;
+    return hash.toString(36);
 }
 
 function renderVariants(variants) {
@@ -381,7 +386,7 @@ function renderVariants(variants) {
         name.textContent = variantDisplayLabel(variant);
         const baseTitleId = variantTitleIdBase(variant);
         let titleId = baseTitleId;
-        let duplicateIndex = 2;
+        let duplicateIndex = 1;
         while (usedTitleIds.has(titleId)) {
             titleId = `${baseTitleId}-${duplicateIndex}`;
             duplicateIndex += 1;
