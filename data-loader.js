@@ -260,32 +260,60 @@ function extractStageNumber(value) {
     return match ? parseInt(match[0], 10) : null;
 }
 
-function deduplicateEtapes(rows) {
-    const byNumber = new Map();
-    const rowNumbers = new Map();
+function isMarkedAsPrincipale(record) {
+    const raw = firstValue(record, ["etape", "étape"]);
+    const normalized = normalizeHeader(raw || "");
+    return /\(\s*principale\s*\)/.test(normalized);
+}
 
-    for (const row of rows) {
-        const num = extractStageNumber(firstValue(row, ["etape", "étape"]));
-        rowNumbers.set(row, num);
-        if (num === null) continue;
+function selectMainAndAlternativeEtapes(rows) {
+    const groupedByStage = new Map();
+    const standaloneRows = [];
 
-        if (!byNumber.has(num)) {
-            byNumber.set(num, row);
-        } else {
-            const label = getEtapeLabel(row);
-            if (label === "principale") {
-                console.warn(`[Roadbook] Étape ${num} dupliquée : la ligne "(principale)" est retenue.`);
-                byNumber.set(num, row);
-            } else {
-                console.warn(`[Roadbook] Étape ${num} dupliquée ignorée.`);
-            }
+    rows.forEach((row, index) => {
+        const stageNumber = extractStageNumber(firstValue(row, ["etape", "étape"]));
+        if (stageNumber === null) {
+            standaloneRows.push({ row, index });
+            return;
         }
-    }
-
-    return rows.filter(row => {
-        const num = rowNumbers.get(row);
-        return num === null ? true : byNumber.get(num) === row;
+        if (!groupedByStage.has(stageNumber)) {
+            groupedByStage.set(stageNumber, []);
+        }
+        groupedByStage.get(stageNumber).push({ row, index });
     });
+
+    const mainRowsWithIndex = [];
+    const alternativeRows = [];
+    const retainedMainRows = [];
+    const movedAlternativeRows = [];
+
+    groupedByStage.forEach((groupRows, stageNumber) => {
+        const principaleIndex = groupRows.findIndex(item => isMarkedAsPrincipale(item.row));
+        const selectedIndex = principaleIndex >= 0 ? principaleIndex : 0;
+        const selected = groupRows[selectedIndex];
+        mainRowsWithIndex.push(selected);
+        retainedMainRows.push(firstValue(selected.row, ["etape", "étape"]) || `Étape ${stageNumber}`);
+
+        groupRows.forEach((item, index) => {
+            if (index === selectedIndex) return;
+            alternativeRows.push(item.row);
+            movedAlternativeRows.push(firstValue(item.row, ["etape", "étape"]) || `Étape ${stageNumber}`);
+        });
+    });
+
+    standaloneRows.forEach(item => {
+        mainRowsWithIndex.push(item);
+        retainedMainRows.push(firstValue(item.row, ["etape", "étape"]) || "Étape ?");
+    });
+
+    mainRowsWithIndex.sort((a, b) => a.index - b.index);
+
+    return {
+        mainRows: mainRowsWithIndex.map(item => item.row),
+        alternativeRows,
+        retainedMainRows,
+        movedAlternativeRows
+    };
 }
 
 function attachVariants(stages, variants) {
@@ -333,16 +361,9 @@ function attachVariants(stages, variants) {
     );
 }
 
-function getEtapeLabel(record) {
-    const raw = firstValue(record, ["etape", "étape"]);
-    const str = normalizeHeader(raw || "");
-    if (str.includes("variante courte")) return "variante_courte";
-    if (str.includes("principale")) return "principale";
-    return null;
-}
-
 function mapEtapeAsVariante(record) {
-    const stageNumber = extractStageNumber(firstValue(record, ["etape", "étape"]));
+    const etapeLabel = firstValue(record, ["etape", "étape"]);
+    const stageNumber = extractStageNumber(etapeLabel);
     const departure = firstValue(record, ["depart", "départ"]);
     const arrival = firstValue(record, ["arrivee", "arrivée"]);
     const distance = toNumber(firstValue(record, ["distance (km)"]));
@@ -363,8 +384,8 @@ function mapEtapeAsVariante(record) {
     return {
         stageReference: stageNumber !== null ? String(stageNumber) : "",
         day: toNumber(firstValue(record, ["jour"])),
-        name: `Variante courte${routeLabel ? ` — ${routeLabel}` : ""}`,
-        type: "Variante courte",
+        name: etapeLabel || `Alternative${routeLabel ? ` — ${routeLabel}` : ""}`,
+        type: "Alternative (étapes principales)",
         departure,
         arrival,
         distance,
@@ -415,19 +436,22 @@ async function loadGoogleSheetRoadbook() {
     ensureSchema(etapesRows, REQUIRED_ETAPES_HEADERS);
     ensureSchema(variantesRows, REQUIRED_VARIANTES_HEADERS);
 
-    const shortVariantRows = etapesRows.filter(row => getEtapeLabel(row) === "variante_courte");
-    const mainEtapesRows = etapesRows.filter(row => getEtapeLabel(row) !== "variante_courte");
+    const {
+        mainRows,
+        alternativeRows,
+        retainedMainRows,
+        movedAlternativeRows
+    } = selectMainAndAlternativeEtapes(etapesRows);
 
-    if (shortVariantRows.length > 0) {
-        console.log(`[Roadbook] ${shortVariantRows.length} variante(s) courte(s) détectée(s) dans l'onglet etapes principales, traitée(s) comme alternatives.`);
-    }
+    console.log("[Roadbook] Lignes principales retenues :", retainedMainRows);
+    console.log("[Roadbook] Lignes déplacées en alternatives :", movedAlternativeRows);
 
-    const stages = deduplicateEtapes(mainEtapesRows).map(mapEtape);
-    const shortVariants = shortVariantRows.map(mapEtapeAsVariante);
+    const stages = mainRows.map(mapEtape);
+    const sheetAlternatives = alternativeRows.map(mapEtapeAsVariante);
     const variants = variantesRows.map(mapVariante);
 
-    if (shortVariants.length > 0) {
-        attachVariants(stages, shortVariants);
+    if (sheetAlternatives.length > 0) {
+        attachVariants(stages, sheetAlternatives);
     }
     attachVariants(stages, variants);
 
