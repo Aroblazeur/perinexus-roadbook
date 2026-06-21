@@ -263,7 +263,7 @@ function extractStageNumber(value) {
 function isMarkedAsPrincipale(record) {
     const raw = firstValue(record, ["etape", "étape"]);
     const normalized = normalizeHeader(raw || "");
-    return normalized.includes("(principale)") || normalized.includes("principale");
+    return /\(\s*principale\s*\)/.test(normalized);
 }
 
 function selectMainAndAlternativeEtapes(rows) {
