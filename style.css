@@ -438,21 +438,43 @@ footer{
    Variants
    ===================================================== */
 
+#variant-content.variant-cards {
+    display: grid;
+    gap: 14px;
+}
+
 .variant-block {
     display: flex;
     flex-direction: column;
     gap: 6px;
 }
 
-.variant-separator {
-    border: none;
-    border-top: 1px solid var(--border);
-    margin: 16px 0;
+.variant-card {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+    background: var(--white);
+}
+
+.variant-title {
+    margin: 0;
+    font-size: 1.05rem;
 }
 
 .variant-subtitle {
+    margin: 0;
     color: var(--text-light);
     font-size: 0.95em;
+}
+
+.variant-details,
+.variant-description,
+.variant-poi-heading {
+    margin: 0;
+}
+
+.variant-poi-list {
+    margin: 0;
 }
 
 /* =====================================================
