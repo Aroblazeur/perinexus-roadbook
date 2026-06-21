@@ -297,6 +297,12 @@ function isVarianteCourte(type) {
     return normalized.includes("courte");
 }
 
+function variantDisplayLabel(variant) {
+    return isVarianteCourte(variant.type)
+        ? "Variante courte"
+        : safeText(variant.name, "Alternative");
+}
+
 function renderVariants(variants) {
     const section = document.getElementById("variants-section");
     const content = document.getElementById("variant-content");
@@ -318,9 +324,7 @@ function renderVariants(variants) {
         const courte = isVarianteCourte(variant.type);
 
         const name = document.createElement("strong");
-        name.textContent = courte
-            ? "Variante courte"
-            : safeText(variant.name, "Alternative");
+        name.textContent = variantDisplayLabel(variant);
         block.appendChild(name);
 
         if (courte && variant.name) {
@@ -332,12 +336,12 @@ function renderVariants(variants) {
 
         const details = [];
         if (!courte && variant.type) details.push(safeText(variant.type));
-        if (Number.isFinite(variant.distance)) details.push(`${variant.distance} km`);
+        if (Number.isFinite(variant.distance)) details.push(`Distance : ${variant.distance} km`);
         if (Number.isFinite(variant.elevationGain)) details.push(`D+ ${variant.elevationGain} m`);
         if (Number.isFinite(variant.elevationLoss)) details.push(`D− ${variant.elevationLoss} m`);
-        if (Number.isFinite(variant.distanceExtra)) details.push(`+${variant.distanceExtra} km`);
-        if (Number.isFinite(variant.elevationGainExtra)) details.push(`D+ ${variant.elevationGainExtra} m`);
-        if (Number.isFinite(variant.elevationLossExtra)) details.push(`D− ${variant.elevationLossExtra} m`);
+        if (Number.isFinite(variant.distanceExtra)) details.push(`Écart distance : +${variant.distanceExtra} km`);
+        if (Number.isFinite(variant.elevationGainExtra)) details.push(`Écart D+ : ${variant.elevationGainExtra} m`);
+        if (Number.isFinite(variant.elevationLossExtra)) details.push(`Écart D− : ${variant.elevationLossExtra} m`);
         if (variant.departure) details.push(`Départ : ${variant.departure}`);
         if (variant.arrival) details.push(`Arrivée : ${variant.arrival}`);
         if (details.length) {
@@ -365,7 +369,7 @@ function renderVariants(variants) {
             block.appendChild(poiList);
         }
 
-        appendGpxActions(block, variant.gpx, safeText(variant.name || (courte ? "Variante courte" : "Alternative")));
+        appendGpxActions(block, variant.gpx, variantDisplayLabel(variant));
         appendResource(block, variant.link, "Ouvrir le lien de l'alternative", "terrain-button terrain-button--secondary");
 
         content.appendChild(block);

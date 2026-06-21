@@ -424,6 +424,27 @@ footer{
 }
 
 /* =====================================================
+   Variants
+   ===================================================== */
+
+.variant-block {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.variant-separator {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 16px 0;
+}
+
+.variant-subtitle {
+    color: var(--text-light);
+    font-size: 0.95em;
+}
+
+/* =====================================================
    Responsive
    ===================================================== */
 
@@ -478,24 +499,8 @@ footer{
         height:160px;
     }
 
-    .variant-separator {
-    border: none;
-    border-top: 1px solid var(--border);
-    margin: 16px 0;
-}
-
-.variant-block {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.variant-subtitle {
-    color: var(--text-light);
-    font-size: 0.95em;
-}
-
-
+    .poi-card{
+        grid-template-columns:1fr;
         gap:12px;
     }
 
