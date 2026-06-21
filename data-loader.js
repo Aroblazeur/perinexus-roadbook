@@ -192,7 +192,7 @@ function buildAccommodation(record) {
     };
 }
 
-function mapEtape(record, index) {
+function mapEtape(record) {
     const stageNumber = extractStageNumber(firstValue(record, ["etape", "étape"]));
     const dayLabel = firstValue(record, ["jour"]);
     const departure = firstValue(record, ["depart", "départ"]);
@@ -220,7 +220,7 @@ function mapEtape(record, index) {
         mapEmbedUrl,
         accommodation,
         variants: [],
-        title: `Étape ${index + 1}${routeLabel ? ` - ${routeLabel}` : ""}`,
+        title: `Étape ${stageNumber !== null ? stageNumber : "?"}${routeLabel ? ` - ${routeLabel}` : ""}`,
         elevation: elevationGain ?? 0,
         duration: "",
         description: "",
@@ -258,6 +258,34 @@ function extractStageNumber(value) {
     if (!value) return null;
     const match = String(value).match(/\d+/);
     return match ? parseInt(match[0], 10) : null;
+}
+
+function deduplicateEtapes(rows) {
+    const byNumber = new Map();
+    const rowNumbers = new Map();
+
+    for (const row of rows) {
+        const num = extractStageNumber(firstValue(row, ["etape", "étape"]));
+        rowNumbers.set(row, num);
+        if (num === null) continue;
+
+        if (!byNumber.has(num)) {
+            byNumber.set(num, row);
+        } else {
+            const label = getEtapeLabel(row);
+            if (label === "principale") {
+                console.warn(`[Roadbook] Étape ${num} dupliquée : la ligne "(principale)" est retenue.`);
+                byNumber.set(num, row);
+            } else {
+                console.warn(`[Roadbook] Étape ${num} dupliquée ignorée.`);
+            }
+        }
+    }
+
+    return rows.filter(row => {
+        const num = rowNumbers.get(row);
+        return num === null ? true : byNumber.get(num) === row;
+    });
 }
 
 function attachVariants(stages, variants) {
@@ -394,7 +422,7 @@ async function loadGoogleSheetRoadbook() {
         console.log(`[Roadbook] ${shortVariantRows.length} variante(s) courte(s) détectée(s) dans l'onglet etapes principales, traitée(s) comme alternatives.`);
     }
 
-    const stages = mainEtapesRows.map(mapEtape);
+    const stages = deduplicateEtapes(mainEtapesRows).map(mapEtape);
     const shortVariants = shortVariantRows.map(mapEtapeAsVariante);
     const variants = variantesRows.map(mapVariante);
 
