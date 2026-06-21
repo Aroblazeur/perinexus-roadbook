@@ -102,6 +102,7 @@ function displayDay(index) {
 
     renderFieldNavigation(day);
     renderStageMap(day.gpx || day.route?.gpx);
+    renderStageMapEmbed(day.mapEmbedUrl);
     renderNotes(day.noteItems || day.notes);
     updatePois(day);
 
@@ -118,6 +119,15 @@ function renderStageMap(gpxUrl) {
     viewer.render(gpxUrl).catch(() => {
         document.getElementById("map-section").hidden = true;
     });
+}
+
+function renderStageMapEmbed(mapEmbedUrl) {
+    const viewer = window.roadbookMapViewer;
+    if (!viewer || typeof viewer.renderEmbed !== "function") {
+        document.getElementById("map-embed-section").hidden = true;
+        return;
+    }
+    viewer.renderEmbed(mapEmbedUrl);
 }
 
 /**
@@ -223,12 +233,11 @@ function renderStageGpx(url) {
     const section = document.getElementById("terrain-navigation");
     const openLink = document.getElementById("terrain-gpx-open");
     const downloadLink = document.getElementById("terrain-gpx-download");
-    const mapyUrl = window.roadbookMapViewer?.resolveMapyUrl?.(url);
-    const resolvedUrl = mapyUrl || window.roadbookMapViewer?.resolveUrl?.(url) || url;
+    const resolvedUrl = window.roadbookMapViewer?.resolveUrl?.(url) || url;
     const valid = isSafeUrl(resolvedUrl);
     section.hidden = !valid;
-    openLink.textContent = mapyUrl ? "🗺️ Ouvrir dans Mapy" : "📍 Ouvrir le GPX";
-    downloadLink.hidden = Boolean(mapyUrl);
+    openLink.textContent = "📍 Ouvrir le GPX";
+    downloadLink.hidden = false;
 
     if (valid) {
         openLink.href = resolvedUrl;

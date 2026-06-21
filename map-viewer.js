@@ -18,14 +18,6 @@
         }
         clear();
 
-        const mapyUrl = resolveMapyUrl(source);
-        if (mapyUrl) {
-            section.hidden = false;
-            container.hidden = false;
-            renderMapyEmbed(container, status, mapyUrl);
-            return true;
-        }
-
         const url = resolveUrl(source);
         if (!url) {
             section.hidden = true;
@@ -61,6 +53,22 @@
             showError(container, status, message);
             return false;
         }
+    }
+
+    function renderEmbed(source) {
+        const section = document.getElementById("map-embed-section");
+        const container = document.getElementById("stage-map-embed");
+        const status = document.getElementById("map-embed-status");
+
+        if (!section || !container || !status) return false;
+
+        container.replaceChildren();
+        const mapyUrl = resolveMapyUrl(source);
+        section.hidden = !mapyUrl;
+        if (!mapyUrl) return false;
+
+        renderMapyEmbed(container, status, mapyUrl);
+        return true;
     }
 
     function clear() {
@@ -161,6 +169,10 @@
         iframe.title = "Carte interactive Mapy de l’étape";
         iframe.loading = "lazy";
         iframe.referrerPolicy = "strict-origin-when-cross-origin";
+        iframe.setAttribute("width", "100%");
+        iframe.setAttribute("height", "320");
+        iframe.style.border = "none";
+        iframe.style.borderRadius = "12px";
         iframe.setAttribute("allowfullscreen", "");
         iframe.setAttribute("frameborder", "0");
         container.replaceChildren(iframe);
@@ -204,8 +216,9 @@
 
         try {
             const url = new URL(source, global.location.href);
-            const trustedHost = /(^|\.)mapy\.(?:com|cz)$/i.test(url.hostname);
-            return url.protocol === "https:" && trustedHost ? url.href : null;
+            return url.origin === "https://mapy.com" && url.href.startsWith("https://mapy.com/")
+                ? url.href
+                : null;
         } catch (error) {
             return null;
         }
@@ -227,5 +240,5 @@
         }
     }
 
-    global.roadbookMapViewer = Object.freeze({ render, clear, resolveUrl, resolveMapyUrl });
+    global.roadbookMapViewer = Object.freeze({ render, renderEmbed, clear, resolveUrl, resolveMapyUrl });
 })(window);

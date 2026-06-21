@@ -155,6 +155,26 @@ function firstValueByPrefix(record, prefix) {
     return key ? record[key] : null;
 }
 
+function sanitizeMapEmbedUrl(value) {
+    const normalized = normalizeValue(value);
+    if (!normalized) return null;
+
+    let candidate = normalized;
+    if (/^<iframe[\s>]/i.test(normalized)) {
+        const srcMatch = normalized.match(/\bsrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i);
+        candidate = srcMatch ? (srcMatch[1] || srcMatch[2] || srcMatch[3] || "") : "";
+    }
+
+    try {
+        const url = new URL(candidate);
+        return url.origin === "https://mapy.com" && url.href.startsWith("https://mapy.com/")
+            ? url.href
+            : null;
+    } catch (error) {
+        return null;
+    }
+}
+
 function buildAccommodation(record) {
     const alternativesValue =
         firstValue(record, ["hebergement alternatif", "hebergement alternative"]) ??
@@ -180,6 +200,7 @@ function mapEtape(record, index) {
     const arrival = firstValue(record, ["arrivee", "arrivée"]);
     const notes = firstValue(record, ["notes"]);
     const gpx = firstValue(record, ["gpx"]);
+    const mapEmbedUrl = sanitizeMapEmbedUrl(firstValue(record, ["lien d'integration de map"]));
     const distance = toNumber(firstValue(record, ["distance (km)"]));
     const elevationGain = toNumber(firstValue(record, ["d+ (m)"]));
     const elevationLoss = toNumber(firstValue(record, ["d− (m)", "d- (m)"]));
@@ -196,6 +217,7 @@ function mapEtape(record, index) {
         elevationLoss,
         notes,
         gpx,
+        mapEmbedUrl,
         accommodation,
         variants: [],
         title: `Étape ${index + 1}${routeLabel ? ` - ${routeLabel}` : ""}`,
@@ -409,6 +431,7 @@ if (typeof module !== "undefined" && module.exports) {
         ETAPES_URL,
         VARIANTES_URL,
         parseCsv,
+        sanitizeMapEmbedUrl,
         loadGoogleSheetRoadbook,
         loadFallbackRoadbook,
         loadRoadbook

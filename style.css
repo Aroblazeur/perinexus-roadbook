@@ -328,6 +328,14 @@ li{
     z-index:0;
 }
 
+#stage-map-embed{
+    width:100%;
+    height:clamp(280px,38vw,340px);
+    overflow:hidden;
+    border-radius:12px;
+    background:#e7eee8;
+}
+
 .mapy-embed iframe{
     display:block;
     width:100%;
@@ -440,6 +448,10 @@ footer{
 
     #stage-map{
         height:320px;
+    }
+
+    #stage-map-embed{
+        height:300px;
     }
 
 }
