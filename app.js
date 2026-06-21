@@ -118,7 +118,7 @@ function renderStageMapEmbed(mapEmbedUrl, gpxUrl) {
         return false;
     }
     const mapVisible = viewer.renderEmbed(mapEmbedUrl);
-    const resolvedGpx = viewer.resolveGpxUrl?.(gpxUrl) || null;
+    const resolvedGpx = resolveStageGpxUrl(gpxUrl);
     renderMapGpxActions(mapVisible, resolvedGpx);
     return mapVisible;
 }
@@ -240,7 +240,7 @@ function renderVariants(variants) {
 function renderStageGpx(url, mapVisible = false) {
     const section = document.getElementById("terrain-navigation");
     const downloadLink = document.getElementById("terrain-gpx-download");
-    const resolvedUrl = window.roadbookMapViewer?.resolveGpxUrl?.(url);
+    const resolvedUrl = resolveStageGpxUrl(url);
     const valid = Boolean(resolvedUrl);
     const showStandaloneGpx = valid && !mapVisible;
     section.hidden = !showStandaloneGpx;
@@ -250,6 +250,10 @@ function renderStageGpx(url, mapVisible = false) {
     } else {
         downloadLink.removeAttribute("href");
     }
+}
+
+function resolveStageGpxUrl(url) {
+    return window.roadbookMapViewer?.resolveGpxUrl?.(url) || null;
 }
 
 function appendGpxActions(container, url, label) {
