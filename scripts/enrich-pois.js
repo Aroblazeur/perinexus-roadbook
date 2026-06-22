@@ -15,6 +15,45 @@ const REQUEST_DELAY_MS = toNonNegativeInteger(process.env.POI_DELAY_MS, 250);
 const REQUEST_TIMEOUT_MS = toNonNegativeInteger(process.env.POI_TIMEOUT_MS, 8_000);
 const SEARCH_LANGUAGES = ["fr", "ca", "es", "en"];
 const USER_AGENT = "PerinexusRoadbookPOITool/1.0 (+https://github.com/Aroblazeur/perinexus-roadbook)";
+const COMMONS_QUERY_VARIANTS = [
+    { suffix: "", imageSource: "commons-exact" },
+    { suffix: "Costa Brava", imageSource: "commons-variant" },
+    { suffix: "Catalunya", imageSource: "commons-variant" },
+    { suffix: "Girona", imageSource: "commons-variant" }
+];
+const COMMONS_GENERIC_TOKENS = new Set([
+    "beach",
+    "cala",
+    "calaix",
+    "cami",
+    "cami de ronda",
+    "cami ronda",
+    "camí",
+    "de",
+    "del",
+    "dels",
+    "d",
+    "el",
+    "en",
+    "es",
+    "la",
+    "les",
+    "l",
+    "los",
+    "platja",
+    "playa",
+    "sa",
+    "san",
+    "sant",
+    "santa",
+    "ses",
+    "the",
+    "via",
+    "verda",
+    "voie",
+    "verde",
+    "du"
+]);
 
 let lastApiRequestAt = 0;
 
@@ -26,13 +65,14 @@ async function main() {
     console.log("[POI] Lecture des onglets Google Sheets publiés…");
     const csvDocuments = await Promise.all(SHEET_URLS.map(url => fetchText(url)));
     const poiNames = collectPoiNames(csvDocuments.flatMap(parseCsv));
+    const existingItems = await loadExistingPoiIndex();
     const items = [];
 
     console.log(`[POI] ${poiNames.length} point(s) d’intérêt unique(s) à enrichir.\n`);
 
     for (let index = 0; index < poiNames.length; index += 1) {
         const name = poiNames[index];
-        const item = await enrichPoi(name);
+        const item = await enrichPoi(name, existingItems.get(normalizeSearchText(name)));
         items.push(item);
         printReport(index + 1, poiNames.length, item);
     }
@@ -55,31 +95,22 @@ async function main() {
     console.log(`[POI] Rapport écrit dans ${OUTPUT_PATH}`);
 }
 
-async function enrichPoi(name) {
+async function enrichPoi(name, existingItem) {
     try {
         const candidate = await findBestWikidataCandidate(name);
-        if (!candidate) return emptyPoi(name, "not_found");
-
-        const entity = await fetchWikidataEntity(candidate.id);
-        if (!entity) return emptyPoi(name, "not_found");
-
-        const imageName = claimValue(entity.claims?.P18);
-        let image = "";
-        if (typeof imageName === "string" && imageName.trim()) {
-            try {
-                image = await fetchCommonsImageUrl(imageName.trim());
-            } catch (error) {
-                image = "";
-            }
-        }
+        const entity = candidate ? await fetchWikidataEntity(candidate.id) : null;
+        const imageInfo = await resolvePoiImage(name, entity, existingItem);
+        const status = entity || imageInfo.image ? "ok" : "not_found";
 
         return {
             name,
-            image,
-            description: shortDescription(entityDescription(entity) || candidate.description),
-            coordinates: coordinatesFromClaims(entity.claims?.P625),
-            source: "wikidata",
-            status: "ok"
+            image: imageInfo.image,
+            imageSource: imageInfo.imageSource,
+            imageStatus: imageInfo.imageStatus,
+            description: shortDescription(entity ? (entityDescription(entity) || candidate?.description) : ""),
+            coordinates: coordinatesFromClaims(entity?.claims?.P625),
+            source: entity ? "wikidata" : imageInfo.imageSource.startsWith("commons") ? "wikimedia-commons" : "wikidata",
+            status
         };
     } catch (error) {
         return {
@@ -87,6 +118,37 @@ async function enrichPoi(name) {
             error: formatError(error)
         };
     }
+}
+
+async function resolvePoiImage(name, entity, existingItem) {
+    const preservedImage = preserveExistingImage(existingItem);
+    if (preservedImage) return preservedImage;
+    let hadLookupError = false;
+
+    const imageName = claimValue(entity?.claims?.P18);
+    if (typeof imageName === "string" && imageName.trim()) {
+        try {
+            const image = await fetchCommonsImageUrl(imageName.trim());
+            if (image) {
+                return {
+                    image,
+                    imageSource: "wikidata-p18",
+                    imageStatus: "found"
+                };
+            }
+        } catch (error) {
+            hadLookupError = true;
+        }
+    }
+
+    try {
+        const commonsMatch = await findCommonsImage(name);
+        if (commonsMatch) return commonsMatch;
+    } catch (error) {
+        hadLookupError = true;
+    }
+
+    return emptyImage(hadLookupError ? "error" : "not_found");
 }
 
 async function findBestWikidataCandidate(name) {
@@ -150,6 +212,138 @@ async function fetchCommonsImageUrl(filename) {
     const imageUrl = pages[0]?.imageinfo?.[0]?.url;
     if (!safeHttpUrl(imageUrl)) return "";
     return `https://commons.wikimedia.org/wiki/Special:Redirect/file/${encodeURIComponent(filename)}`;
+}
+
+async function findCommonsImage(name) {
+    const queries = buildCommonsImageQueries(name);
+    for (const query of queries) {
+        const results = await searchCommonsFiles(query.search);
+        const match = selectCommonsImageResult(results, name, query);
+        if (match) {
+            return {
+                image: commonsFileRedirectUrl(match.title),
+                imageSource: query.imageSource,
+                imageStatus: "found"
+            };
+        }
+    }
+    return null;
+}
+
+async function searchCommonsFiles(search) {
+    const url = new URL(COMMONS_API);
+    url.search = new URLSearchParams({
+        action: "query",
+        format: "json",
+        generator: "search",
+        gsrnamespace: "6",
+        gsrlimit: "8",
+        gsrsearch: `"${search}"`,
+        prop: "imageinfo",
+        iiprop: "url"
+    }).toString();
+    const data = await fetchJson(url);
+    return Object.values(data.query?.pages || {});
+}
+
+function selectCommonsImageResult(results, originalName, query) {
+    let best = null;
+    (Array.isArray(results) ? results : []).forEach(result => {
+        const score = scoreCommonsCandidate(result?.title, originalName, query);
+        if (!best || score > best.score) best = { result, score };
+    });
+    return best && best.score >= commonsScoreThreshold(query) ? best.result : null;
+}
+
+function scoreCommonsCandidate(title, originalName, query) {
+    const titleText = normalizeCommonsTitle(title);
+    const normalizedOriginal = normalizeSearchText(originalName);
+    const normalizedQuery = normalizeSearchText(query.search);
+    const titleTokens = meaningfulTokens(titleText);
+    const originalTokens = meaningfulTokens(originalName);
+    const locationTokens = meaningfulTokens(query.location || "");
+
+    if (!titleText || !originalTokens.length) return -100;
+
+    const containsAllOriginalTokens = originalTokens.every(token => titleTokens.includes(token));
+    if (!containsAllOriginalTokens) return -100;
+
+    let score = 0;
+    if (titleText === normalizedOriginal) score = Math.max(score, 120);
+    if (titleText.includes(normalizedOriginal)) score = Math.max(score, 110);
+    if (titleText.includes(normalizedQuery)) score = Math.max(score, 105);
+
+    const overlap = originalTokens.filter(token => titleTokens.includes(token)).length;
+    score = Math.max(score, Math.round((overlap / originalTokens.length) * 90));
+
+    if (locationTokens.length > 0) {
+        const locationMatch = locationTokens.some(token => titleTokens.includes(token));
+        if (!locationMatch && !titleText.includes(normalizedQuery)) return -100;
+        if (locationMatch) score += 8;
+    }
+
+    if (query.imageSource === "commons-exact" && titleText.startsWith(normalizedOriginal)) score += 10;
+
+    return score;
+}
+
+function commonsScoreThreshold(query) {
+    return query.imageSource === "commons-exact" ? 85 : 92;
+}
+
+function buildCommonsImageQueries(name) {
+    const original = normalizeWhitespace(name);
+    const accentless = removeAccents(original);
+    return [...new Map(
+        COMMONS_QUERY_VARIANTS
+            .flatMap(variant => {
+                const base = variant.suffix ? `${original} ${variant.suffix}` : original;
+                const items = [{ search: base, location: variant.suffix, imageSource: variant.imageSource }];
+                if (accentless && accentless !== original) {
+                    const accentlessSearch = variant.suffix ? `${accentless} ${variant.suffix}` : accentless;
+                    items.push({
+                        search: accentlessSearch,
+                        location: variant.suffix,
+                        imageSource: variant.imageSource
+                    });
+                }
+                return items;
+            })
+            .filter(item => normalizeWhitespace(item.search))
+            .map(item => [normalizeSearchText(item.search), item])
+    ).values()];
+}
+
+function preserveExistingImage(item) {
+    const image = safeHttpUrl(item?.image);
+    if (!image) return null;
+    return {
+        image,
+        imageSource: safeText(item?.imageSource) || inferLegacyImageSource(item),
+        imageStatus: safeText(item?.imageStatus) || "existing"
+    };
+}
+
+function inferLegacyImageSource(item) {
+    if (!safeText(item?.image)) return "";
+    return item?.source === "wikidata" ? "wikidata-p18" : "wikimedia-commons";
+}
+
+async function loadExistingPoiIndex() {
+    try {
+        const serialized = await fs.readFile(OUTPUT_PATH, "utf8");
+        const data = JSON.parse(serialized);
+        const items = Array.isArray(data?.items) ? data.items : [];
+        const index = new Map();
+        items.forEach(item => {
+            const key = normalizeSearchText(item?.name);
+            if (key) index.set(key, item);
+        });
+        return index;
+    } catch (error) {
+        if (error?.code === "ENOENT") return new Map();
+        throw error;
+    }
 }
 
 async function fetchJson(url) {
@@ -221,6 +415,28 @@ function buildSearchQueries(name) {
     return [...new Set([original, translated, distinctive].filter(value => value.length >= 3))];
 }
 
+function normalizeCommonsTitle(title) {
+    return normalizeSearchText(
+        String(title || "")
+            .replace(/^File:/i, "")
+            .replace(/\.[a-z0-9]{2,5}$/i, "")
+            .replace(/\([^)]*\)/g, " ")
+    );
+}
+
+function commonsFileRedirectUrl(title) {
+    const filename = String(title || "").replace(/^File:/i, "").trim();
+    return filename
+        ? `https://commons.wikimedia.org/wiki/Special:Redirect/file/${encodeURIComponent(filename)}`
+        : "";
+}
+
+function meaningfulTokens(value) {
+    return [...new Set(normalizeSearchText(value)
+        .split(" ")
+        .filter(token => token.length >= 3 && !COMMONS_GENERIC_TOKENS.has(token)))];
+}
+
 function scoreCandidate(candidate, queries) {
     const description = normalizeSearchText(candidate.description);
     if (/homonymie|disambiguation|desambiguacion/.test(description)) return -100;
@@ -282,10 +498,20 @@ function emptyPoi(name, status) {
     return {
         name,
         image: "",
+        imageSource: "",
+        imageStatus: status === "error" ? "error" : "not_found",
         description: "",
         coordinates: null,
         source: "wikidata",
         status
+    };
+}
+
+function emptyImage(imageStatus) {
+    return {
+        image: "",
+        imageSource: "",
+        imageStatus
     };
 }
 
@@ -369,6 +595,16 @@ function normalizeWhitespace(value) {
     return String(value || "").replace(/\s+/g, " ").trim();
 }
 
+function removeAccents(value) {
+    return normalizeWhitespace(value)
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+}
+
+function safeText(value) {
+    return typeof value === "string" ? value.trim() : "";
+}
+
 function googleSheetCsvUrl(sheetName) {
     return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
 }
@@ -377,7 +613,8 @@ function printReport(index, total, item) {
     console.log(`[${index}/${total}] ${item.name}`);
     console.log(`  Statut      : ${item.status}${item.error ? ` · ${item.error}` : ""}`);
     console.log(`  Description : ${item.description || "non trouvée"}`);
-    console.log(`  Image       : ${item.image ? "trouvée" : "non trouvée"}`);
+    console.log(`  Image       : ${item.image ? `trouvée (${item.imageSource || "source inconnue"})` : "non trouvée"}`);
+    console.log(`  Image statut: ${item.imageStatus}`);
     console.log(`  Coordonnées : ${item.coordinates ? `${item.coordinates.lat}, ${item.coordinates.lng}` : "non trouvées"}`);
 }
 
@@ -402,10 +639,13 @@ if (require.main === module) {
 }
 
 module.exports = {
+    buildCommonsImageQueries,
     buildSearchQueries,
     collectPoiNames,
     normalizeSearchText,
     parseCsv,
+    scoreCommonsCandidate,
+    selectCommonsImageResult,
     scoreCandidate,
     shortDescription
 };
