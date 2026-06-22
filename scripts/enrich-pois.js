@@ -15,11 +15,16 @@ const REQUEST_DELAY_MS = toNonNegativeInteger(process.env.POI_DELAY_MS, 250);
 const REQUEST_TIMEOUT_MS = toNonNegativeInteger(process.env.POI_TIMEOUT_MS, 8_000);
 const SEARCH_LANGUAGES = ["fr", "ca", "es", "en"];
 const USER_AGENT = "PerinexusRoadbookPOITool/1.0 (+https://github.com/Aroblazeur/perinexus-roadbook)";
+const COMMONS_EXACT_SOURCE = "commons-exact";
+const COMMONS_VARIANT_SOURCE = "commons-variant";
+const COMMONS_SOURCES = new Set([COMMONS_EXACT_SOURCE, COMMONS_VARIANT_SOURCE]);
+const COMMONS_LOCATION_VARIANTS = (process.env.POI_COMMONS_LOCATION_VARIANTS || "Costa Brava,Catalunya,Girona")
+    .split(",")
+    .map(normalizeWhitespace)
+    .filter(Boolean);
 const COMMONS_QUERY_VARIANTS = [
-    { suffix: "", imageSource: "commons-exact" },
-    { suffix: "Costa Brava", imageSource: "commons-variant" },
-    { suffix: "Catalunya", imageSource: "commons-variant" },
-    { suffix: "Girona", imageSource: "commons-variant" }
+    { suffix: "", imageSource: COMMONS_EXACT_SOURCE },
+    ...COMMONS_LOCATION_VARIANTS.map(suffix => ({ suffix, imageSource: COMMONS_VARIANT_SOURCE }))
 ];
 const COMMONS_GENERIC_TOKENS = new Set([
     "beach",
@@ -54,6 +59,14 @@ const COMMONS_GENERIC_TOKENS = new Set([
     "verde",
     "du"
 ]);
+const COMMONS_SCORE_EXACT_MATCH = 120;
+const COMMONS_SCORE_CONTAINS_ORIGINAL = 110;
+const COMMONS_SCORE_CONTAINS_QUERY = 105;
+const COMMONS_SCORE_TOKEN_OVERLAP = 90;
+const COMMONS_SCORE_EXACT_PREFIX_BONUS = 10;
+const COMMONS_SCORE_LOCATION_BONUS = 8;
+const COMMONS_THRESHOLD_EXACT = 85;
+const COMMONS_THRESHOLD_VARIANT = 92;
 
 let lastApiRequestAt = 0;
 
@@ -239,7 +252,7 @@ async function searchCommonsFiles(search) {
         generator: "search",
         gsrnamespace: "6",
         gsrlimit: "8",
-        gsrsearch: `"${String(search || "").replace(/"/g, '\\"')}"`,
+        gsrsearch: normalizeWhitespace(search),
         prop: "imageinfo",
         iiprop: "url"
     }).toString();
@@ -270,26 +283,28 @@ function scoreCommonsCandidate(title, originalName, query) {
     if (!containsAllOriginalTokens) return -100;
 
     let score = 0;
-    if (titleText === normalizedOriginal) score = Math.max(score, 120);
-    if (titleText.includes(normalizedOriginal)) score = Math.max(score, 110);
-    if (titleText.includes(normalizedQuery)) score = Math.max(score, 105);
+    if (titleText === normalizedOriginal) score = Math.max(score, COMMONS_SCORE_EXACT_MATCH);
+    if (titleText.includes(normalizedOriginal)) score = Math.max(score, COMMONS_SCORE_CONTAINS_ORIGINAL);
+    if (titleText.includes(normalizedQuery)) score = Math.max(score, COMMONS_SCORE_CONTAINS_QUERY);
 
     const overlap = originalTokens.filter(token => titleTokens.has(token)).length;
-    score = Math.max(score, Math.round((overlap / originalTokens.length) * 90));
+    score = Math.max(score, Math.round((overlap / originalTokens.length) * COMMONS_SCORE_TOKEN_OVERLAP));
 
     if (locationTokens.length > 0) {
         const locationMatch = locationTokens.some(token => titleTokens.has(token));
         if (!locationMatch && !titleText.includes(normalizedQuery)) return -100;
-        if (locationMatch) score += 8;
+        if (locationMatch) score += COMMONS_SCORE_LOCATION_BONUS;
     }
 
-    if (query.imageSource === "commons-exact" && titleText.startsWith(normalizedOriginal)) score += 10;
+    if (query.imageSource === COMMONS_EXACT_SOURCE && titleText.startsWith(normalizedOriginal)) {
+        score += COMMONS_SCORE_EXACT_PREFIX_BONUS;
+    }
 
     return score;
 }
 
 function commonsScoreThreshold(query) {
-    return query.imageSource === "commons-exact" ? 85 : 92;
+    return query.imageSource === COMMONS_EXACT_SOURCE ? COMMONS_THRESHOLD_EXACT : COMMONS_THRESHOLD_VARIANT;
 }
 
 function buildCommonsImageQueries(name) {
@@ -549,9 +564,13 @@ function safeCoordinates(value) {
 
 function resolvePoiSource({ entity, imageSource } = {}) {
     if (entity) return "wikidata";
-    if (safeText(imageSource).startsWith("commons")) return "wikimedia-commons";
+    if (isCommonsImageSource(imageSource)) return "wikimedia-commons";
     if (safeText(imageSource) === "wikidata-p18") return "wikidata";
     return "";
+}
+
+function isCommonsImageSource(value) {
+    return COMMONS_SOURCES.has(safeText(value));
 }
 
 function splitMulti(value) {
