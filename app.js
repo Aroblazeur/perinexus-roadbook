@@ -335,28 +335,52 @@ function variantDisplayLabel(variant) {
         : safeText(variant.name, "Alternative");
 }
 
+function variantTitleIdBase(variant) {
+    const parts = [
+        variant?.type,
+        variant?.name,
+        variant?.departure,
+        variant?.arrival,
+        variant?.stageReference,
+        variant?.day
+    ].map(value => safeText(value, "")
+        .trim()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, ""))
+        .filter(Boolean);
+
+    return `variant-title-${parts.join("-") || "alternative"}`;
+}
+
 function renderVariants(variants) {
     const section = document.getElementById("variants-section");
     const content = document.getElementById("variant-content");
     content.replaceChildren();
+    content.classList.toggle("variant-cards", variants.length > 0);
     section.hidden = variants.length === 0;
 
     if (variants.length === 0) return;
 
-    variants.forEach((variant, index) => {
-        if (index > 0) {
-            const separator = document.createElement("hr");
-            separator.className = "variant-separator";
-            content.appendChild(separator);
-        }
+    const titleIdCounts = new Map();
 
-        const block = document.createElement("div");
-        block.className = "variant-block";
+    variants.forEach(variant => {
+        const block = document.createElement("article");
+        block.className = "variant-block variant-card";
 
         const courte = isVarianteCourte(variant.type);
 
-        const name = document.createElement("strong");
+        const name = document.createElement("h3");
+        name.className = "variant-title";
         name.textContent = variantDisplayLabel(variant);
+        const baseTitleId = variantTitleIdBase(variant);
+        const duplicateIndex = (titleIdCounts.get(baseTitleId) || 0) + 1;
+        titleIdCounts.set(baseTitleId, duplicateIndex);
+        const titleId = duplicateIndex === 1 ? baseTitleId : `${baseTitleId}-${duplicateIndex}`;
+        name.id = titleId;
+        block.setAttribute("aria-labelledby", titleId);
         block.appendChild(name);
 
         if (courte && variant.name) {
@@ -378,21 +402,25 @@ function renderVariants(variants) {
         if (variant.arrival) details.push(`Arrivée : ${variant.arrival}`);
         if (details.length) {
             const text = document.createElement("p");
+            text.className = "variant-details";
             text.textContent = details.join(" · ");
             block.appendChild(text);
         }
 
         if (variant.description) {
             const description = document.createElement("p");
+            description.className = "variant-description";
             description.textContent = variant.description;
             block.appendChild(description);
         }
 
         if (Array.isArray(variant.pointsOfInterest) && variant.pointsOfInterest.length) {
             const poiHeading = document.createElement("p");
+            poiHeading.className = "variant-poi-heading";
             poiHeading.textContent = "Points d'intérêt :";
             block.appendChild(poiHeading);
             const poiList = document.createElement("ul");
+            poiList.className = "variant-poi-list";
             renderPoiList(poiList, variant.pointsOfInterest);
             block.appendChild(poiList);
         }
