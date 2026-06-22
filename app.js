@@ -373,7 +373,7 @@ function renderVariants(variants) {
 
         const courte = isVarianteCourte(variant.type);
 
-        const name = document.createElement("h3");
+        const name = document.createElement("p");
         name.className = "variant-title";
         name.textContent = variantDisplayLabel(variant);
         const baseTitleId = variantTitleIdBase(variant);
