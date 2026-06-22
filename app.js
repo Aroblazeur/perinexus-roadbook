@@ -343,14 +343,13 @@ function variantTitleIdBase(variant) {
         variant?.arrival,
         variant?.stageReference,
         variant?.day
-    ]
-        .map(value => safeText(value, "")
-            .trim()
-            .toLowerCase()
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .replace(/[^a-z0-9]+/g, "-")
-            .replace(/^-+|-+$/g, ""))
+    ].map(value => safeText(value, "")
+        .trim()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, ""))
         .filter(Boolean);
 
     return `variant-title-${parts.join("-") || "alternative"}`;
@@ -373,7 +372,7 @@ function renderVariants(variants) {
 
         const courte = isVarianteCourte(variant.type);
 
-        const name = document.createElement("p");
+        const name = document.createElement("h3");
         name.className = "variant-title";
         name.textContent = variantDisplayLabel(variant);
         const baseTitleId = variantTitleIdBase(variant);
