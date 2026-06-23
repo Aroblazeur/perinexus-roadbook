@@ -228,6 +228,7 @@ function renderRoadbookCurrentSummary(container, summary) {
     appendSummaryMap(section, summary.mapEmbedUrl, {
         title: "Carte interactive du tracé total actuel",
         className: "roadbook-current-summary__map mapy-embed",
+        linkClassName: "roadbook-current-summary__map-link",
         link: summary.link,
         linkLabel: "Ouvrir le tracé total actuel dans un nouvel onglet"
     });
@@ -313,6 +314,7 @@ function appendSummaryMap(container, mapEmbedUrl, options = {}) {
     const {
         className = "official-itinerary__map mapy-embed",
         title = "Carte interactive",
+        linkClassName = "official-itinerary__map-link",
         link = null,
         linkLabel = "Ouvrir la carte dans un nouvel onglet"
     } = options;
@@ -324,9 +326,7 @@ function appendSummaryMap(container, mapEmbedUrl, options = {}) {
         mapContainer.href = safeLink;
         mapContainer.target = "_blank";
         mapContainer.rel = "noopener noreferrer";
-        mapContainer.classList.add(className.includes("roadbook-current-summary__map")
-            ? "roadbook-current-summary__map-link"
-            : "official-itinerary__map-link");
+        mapContainer.classList.add(linkClassName);
         mapContainer.setAttribute("aria-label", linkLabel);
     }
 
