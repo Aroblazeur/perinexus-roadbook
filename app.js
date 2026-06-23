@@ -8,6 +8,7 @@
 
 let roadbook = null;
 let currentDay = 0;
+let currentView = "home";
 let accommodationEnrichmentIndex = new Map();
 let poiEnrichmentIndex = new Map();
 let durationRequestId = 0;
@@ -62,16 +63,17 @@ async function initializeRoadbook() {
             throw new Error("Le roadbook ne contient aucune étape exploitable.");
         }
 
-        updateSummary();
-
-        displayDay(currentDay);
+        renderHomePage();
+        showHomePage();
 
         [accommodationEnrichmentIndex, poiEnrichmentIndex] = await Promise.all([
             accommodationEnrichmentPromise,
             poiEnrichmentPromise
         ]);
-        renderCurrentAccommodation();
-        renderCurrentPois();
+        if (currentView === "stage") {
+            renderCurrentAccommodation();
+            renderCurrentPois();
+        }
 
     } catch (error) {
 
@@ -130,8 +132,18 @@ function updateSummary() {
     const info = document.getElementById("roadbook-info");
 
     info.replaceChildren();
-    renderOfficialItinerarySummary(info, roadbook.summary?.official);
+    renderHomePageContent(info);
 
+}
+
+function renderHomePage() {
+    updateSummary();
+}
+
+function renderHomePageContent(container) {
+    renderOfficialItinerarySummary(container, roadbook.summary?.official);
+    renderHomeStageList(container);
+    renderRoadbookCurrentSummary(container, roadbook.summary?.stagesTotal);
 }
 
 function renderOfficialItinerarySummary(container, summary) {
@@ -156,6 +168,87 @@ function renderOfficialItinerarySummary(container, summary) {
     appendSummaryLink(section, summary.link);
 
     container.appendChild(section);
+}
+
+function renderRoadbookCurrentSummary(container, summary) {
+    if (!summary) return;
+
+    const section = document.createElement("div");
+    section.className = "roadbook-current-summary";
+
+    const heading = document.createElement("h3");
+    heading.textContent = "Roadbook actuel";
+    section.appendChild(heading);
+
+    const stats = document.createElement("div");
+    stats.className = "stats stats--compact";
+    appendSummaryStatIfPresent(stats, "distance", "Distance", summary.distance, formatDistanceMetric);
+    appendSummaryStatIfPresent(stats, "elevationGain", "D+", summary.elevationGain, formatElevationMetric);
+    appendSummaryStatIfPresent(stats, "elevationLoss", "D−", summary.elevationLoss, formatElevationMetric);
+    section.appendChild(stats);
+
+    container.appendChild(section);
+}
+
+function renderHomeStageList(container) {
+    const section = document.createElement("section");
+    section.className = "home-stage-list";
+    section.setAttribute("aria-labelledby", "home-stage-list-title");
+
+    const heading = document.createElement("h2");
+    heading.id = "home-stage-list-title";
+    heading.textContent = "Étapes";
+    section.appendChild(heading);
+
+    const list = document.createElement("div");
+    list.className = "home-stage-list__items";
+
+    roadbook.days.forEach((day, index) => {
+        list.appendChild(createHomeStageCard(day, index));
+    });
+
+    section.appendChild(list);
+    container.appendChild(section);
+}
+
+function createHomeStageCard(day, index) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "home-stage-card";
+    button.addEventListener("click", () => openStage(index));
+
+    const number = document.createElement("span");
+    number.className = "home-stage-card__number";
+    number.textContent = safeText(day.stage || (index + 1), String(index + 1));
+
+    const content = document.createElement("span");
+    content.className = "home-stage-card__content";
+
+    const route = document.createElement("strong");
+    route.className = "home-stage-card__route";
+    route.textContent = stageRouteLabel(day, index);
+    content.appendChild(route);
+
+    const stats = document.createElement("span");
+    stats.className = "home-stage-card__stats stats stats--compact";
+    appendSummaryStatIfPresent(stats, "distance", "Distance", day.distance, formatDistanceMetric);
+    appendSummaryStatIfPresent(stats, "elevationGain", "D+", day.elevationGain, formatElevationMetric);
+    content.appendChild(stats);
+
+    const arrow = document.createElement("span");
+    arrow.className = "home-stage-card__arrow";
+    arrow.setAttribute("aria-hidden", "true");
+    arrow.textContent = "→";
+
+    button.append(number, content, arrow);
+    return button;
+}
+
+function stageRouteLabel(day, index) {
+    const departure = safeText(day.departure, "");
+    const arrival = safeText(day.arrival, "");
+    const route = [departure, arrival].filter(Boolean).join(" → ");
+    return route || safeText(day.title, `Étape ${index + 1}`);
 }
 
 function appendSummaryStatIfPresent(container, icon, label, value, formatter) {
@@ -211,6 +304,8 @@ function displayDay(index) {
 
     if (!day) return;
 
+    currentDay = index;
+    showStagePage();
     updateRoadbookChrome(day);
 
     document.getElementById("current-day").textContent =
@@ -229,6 +324,44 @@ function displayDay(index) {
 
     updateButtons();
 
+}
+
+function openStage(index) {
+    displayDay(index);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function showHomePage() {
+    currentView = "home";
+    updateRoadbookChrome();
+    setSectionHidden("summary", false);
+    setStageSectionsHidden(true);
+    updateButtons();
+    document.title = safeText(roadbook?.title, "Roadbook vélo");
+}
+
+function showStagePage() {
+    currentView = "stage";
+    setSectionHidden("summary", true);
+    setStageSectionsHidden(false);
+}
+
+function setStageSectionsHidden(hidden) {
+    [
+        "day-navigation",
+        "day-card",
+        "notes-section",
+        "pois-section",
+        "primary-accommodation-card",
+        "map-embed-section",
+        "variants-section",
+        "alternative-accommodation-card"
+    ].forEach(id => setSectionHidden(id, hidden));
+}
+
+function setSectionHidden(id, hidden) {
+    const element = document.getElementById(id);
+    if (element) element.hidden = hidden;
 }
 
 function updateRoadbookChrome(day = null) {
@@ -912,6 +1045,12 @@ function nextDay() {
 
 }
 
+function goHome() {
+    if (!roadbook || !Array.isArray(roadbook.days)) return;
+    showHomePage();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
 /**
  * Active / désactive les boutons
  */
@@ -933,6 +1072,10 @@ function updateButtons() {
 document
     .getElementById("previous-day")
     .addEventListener("click", previousDay);
+
+document
+    .getElementById("home-button")
+    .addEventListener("click", goHome);
 
 document
     .getElementById("next-day")
