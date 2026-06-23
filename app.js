@@ -150,14 +150,7 @@ function computeStagesTotal() {
     const existing = roadbook.summary?.stagesTotal;
     const existingHasData = existing &&
         [existing.distance, existing.elevationGain, existing.elevationLoss].some(Number.isFinite);
-    if (existingHasData) {
-        return {
-            ...existing,
-            mapEmbedUrl: existing.mapEmbedUrl ?? marker?.mapEmbedUrl ?? null,
-            gpx: existing.gpx ?? marker?.gpx ?? null,
-            link: existing.link ?? marker?.link ?? null
-        };
-    }
+    if (existingHasData) return existing;
 
     const days = Array.isArray(roadbook.days) ? roadbook.days : [];
     const distance = sumFinite(days.map(d => d.distance));
@@ -170,9 +163,9 @@ function computeStagesTotal() {
             distance,
             elevationGain,
             elevationLoss,
-            mapEmbedUrl: marker?.mapEmbedUrl ?? existing?.mapEmbedUrl ?? null,
-            gpx: marker?.gpx ?? existing?.gpx ?? null,
-            link: marker?.link ?? existing?.link ?? null
+            mapEmbedUrl: marker?.mapEmbedUrl ?? null,
+            gpx: marker?.gpx ?? null,
+            link: marker?.link ?? null
         }
         : null;
 }
