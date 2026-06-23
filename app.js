@@ -146,6 +146,7 @@ function computeStagesTotal() {
         return valid.length ? valid.reduce((a, b) => a + b, 0) : null;
     };
 
+    const marker = roadbook.summary?.stagesTotalMarker || null;
     const existing = roadbook.summary?.stagesTotal;
     const existingHasData = existing &&
         [existing.distance, existing.elevationGain, existing.elevationLoss].some(Number.isFinite);
@@ -157,7 +158,16 @@ function computeStagesTotal() {
     const elevationLoss = sumFinite(days.map(d => d.elevationLoss));
 
     const hasAny = [distance, elevationGain, elevationLoss].some(Number.isFinite);
-    return hasAny ? { distance, elevationGain, elevationLoss } : null;
+    return hasAny
+        ? {
+            distance,
+            elevationGain,
+            elevationLoss,
+            mapEmbedUrl: marker?.mapEmbedUrl ?? null,
+            gpx: marker?.gpx ?? null,
+            link: marker?.link ?? null
+        }
+        : null;
 }
 
 function renderHomePageContent(container) {
@@ -183,8 +193,10 @@ function renderOfficialItinerarySummary(container, summary) {
     appendSummaryStatIfPresent(stats, "elevationLoss", "D−", summary.elevationLoss, formatElevationMetric);
     section.appendChild(stats);
 
-    appendSummaryMap(section, summary.mapEmbedUrl);
-    appendSummaryLink(section, summary.link);
+    appendSummaryMap(section, summary.mapEmbedUrl, {
+        title: "Carte interactive de l'itinéraire officiel"
+    });
+    appendSummaryLink(section, summary.link, "Voir le tracé complet");
 
     container.appendChild(section);
 }
@@ -196,7 +208,7 @@ function renderRoadbookCurrentSummary(container, summary) {
     section.className = "roadbook-current-summary";
 
     const heading = document.createElement("h3");
-    heading.textContent = "Roadbook actuel";
+    heading.textContent = "Tracé total actuel";
     section.appendChild(heading);
 
     const stats = document.createElement("div");
@@ -205,6 +217,15 @@ function renderRoadbookCurrentSummary(container, summary) {
     appendSummaryStatIfPresent(stats, "elevationGain", "D+", summary.elevationGain, formatElevationMetric);
     appendSummaryStatIfPresent(stats, "elevationLoss", "D−", summary.elevationLoss, formatElevationMetric);
     section.appendChild(stats);
+
+    appendSummaryMap(section, summary.mapEmbedUrl, {
+        title: "Carte interactive du tracé total actuel",
+        className: "roadbook-current-summary__map mapy-embed",
+        linkClassName: "roadbook-current-summary__map-link",
+        link: summary.link,
+        linkLabel: "Ouvrir le tracé total actuel dans un nouvel onglet"
+    });
+    appendSummaryLink(section, summary.link, "Voir le tracé total actuel", "roadbook-current-summary__actions");
 
     container.appendChild(section);
 }
@@ -279,16 +300,24 @@ function appendSummaryStat(container, icon, label, value) {
     container.appendChild(createStatCard({ icon, label, value }));
 }
 
-function appendSummaryMap(container, mapEmbedUrl) {
+function appendSummaryMap(container, mapEmbedUrl, options = {}) {
     const mapyUrl = window.roadbookMapViewer?.resolveMapyUrl?.(mapEmbedUrl);
     if (!mapyUrl) return;
 
+    const {
+        className = "official-itinerary__map mapy-embed",
+        title = "Carte interactive",
+        linkClassName = "official-itinerary__map-link",
+        link = null,
+        linkLabel = "Ouvrir la carte dans un nouvel onglet"
+    } = options;
+    const safeLink = isSafeUrl(link) ? link : null;
     const mapContainer = document.createElement("div");
-    mapContainer.className = "official-itinerary__map mapy-embed";
+    mapContainer.className = className;
 
     const iframe = document.createElement("iframe");
     iframe.src = mapyUrl;
-    iframe.title = "Carte interactive de l'itinéraire officiel";
+    iframe.title = title;
     iframe.loading = "lazy";
     iframe.referrerPolicy = "strict-origin-when-cross-origin";
     iframe.setAttribute("width", "100%");
@@ -297,17 +326,33 @@ function appendSummaryMap(container, mapEmbedUrl) {
     iframe.style.borderRadius = "12px";
     iframe.setAttribute("allowfullscreen", "");
     iframe.setAttribute("frameborder", "0");
-
     mapContainer.appendChild(iframe);
+
+    if (safeLink) {
+        const overlay = document.createElement("a");
+        overlay.href = safeLink;
+        overlay.target = "_blank";
+        overlay.rel = "noopener noreferrer";
+        overlay.className = linkClassName;
+        overlay.setAttribute("aria-label", linkLabel);
+
+        const label = document.createElement("span");
+        label.className = "summary-map-link__label";
+        label.textContent = linkLabel;
+        overlay.appendChild(label);
+
+        mapContainer.appendChild(overlay);
+    }
+
     container.appendChild(mapContainer);
 }
 
-function appendSummaryLink(container, link) {
+function appendSummaryLink(container, link, label = "Voir le tracé complet", className = "official-itinerary__actions") {
     if (!isSafeUrl(link)) return;
 
     const action = document.createElement("div");
-    action.className = "official-itinerary__actions";
-    appendResource(action, link, "Voir le tracé complet", "terrain-button");
+    action.className = className;
+    appendResource(action, link, label, "terrain-button");
     container.appendChild(action);
 }
 
