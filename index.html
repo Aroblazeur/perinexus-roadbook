@@ -52,13 +52,14 @@
       <div id="roadbook-info">Chargement...</div>
     </section>
 
-    <section id="day-navigation" class="card">
+    <section id="day-navigation" class="card" hidden>
+      <button id="home-button" type="button">Accueil</button>
       <button id="previous-day" type="button">← Jour précédent</button>
       <span id="current-day">Jour 1</span>
       <button id="next-day" type="button">Jour suivant →</button>
     </section>
 
-    <section id="day-card" class="card">
+    <section id="day-card" class="card" hidden>
       <h2 id="day-title">Étape</h2>
       <div class="stats">
         <div class="stat"><span class="label">Distance</span><span id="distance">— km</span></div>
@@ -68,13 +69,13 @@
       </div>
     </section>
 
-    <section id="notes-section" class="card notes-card">
+    <section id="notes-section" class="card notes-card" hidden>
       <h2 id="notes-title">Notes (0)</h2>
       <ul id="notes"></ul>
       <a id="add-note" class="terrain-button notes-card__add" target="_blank" rel="noopener noreferrer" hidden>➕ Ajouter une note</a>
     </section>
 
-    <section class="card">
+    <section id="pois-section" class="card" hidden>
       <h2>Points d'intérêt</h2>
       <ul id="pois"></ul>
     </section>
@@ -106,12 +107,12 @@
   </main>
 
   <footer><p id="footer-roadbook-title">Roadbook vélo</p></footer>
-  <script src="data-loader.js?v=compact-roadbook-stats-20260623"></script>
-  <script src="map-viewer.js?v=compact-roadbook-stats-20260623"></script>
-  <script src="accommodation-enrichment-loader.js?v=compact-roadbook-stats-20260623"></script>
-  <script src="poi-enrichment-loader.js?v=compact-roadbook-stats-20260623"></script>
-  <script src="duration-estimator.js?v=compact-roadbook-stats-20260623"></script>
-  <script src="app.js?v=compact-roadbook-stats-20260623"></script>
+  <script src="data-loader.js?v=roadbook-home-page-20260623"></script>
+  <script src="map-viewer.js?v=roadbook-home-page-20260623"></script>
+  <script src="accommodation-enrichment-loader.js?v=roadbook-home-page-20260623"></script>
+  <script src="poi-enrichment-loader.js?v=roadbook-home-page-20260623"></script>
+  <script src="duration-estimator.js?v=roadbook-home-page-20260623"></script>
+  <script src="app.js?v=roadbook-home-page-20260623"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

@@ -284,6 +284,100 @@ button:disabled{
     gap:12px;
 }
 
+.home-stage-list,
+.roadbook-current-summary{
+    display:grid;
+    gap:14px;
+    margin-top:26px;
+}
+
+.home-stage-list h2,
+.roadbook-current-summary h3{
+    margin:0;
+}
+
+.home-stage-list__items{
+    display:grid;
+    gap:10px;
+}
+
+.home-stage-card{
+    display:grid;
+    grid-template-columns:auto minmax(0,1fr) auto;
+    gap:14px;
+    align-items:center;
+    width:100%;
+    min-height:74px;
+    padding:14px;
+    border:1px solid rgba(46,125,50,.14);
+    border-radius:16px;
+    background:#fff;
+    color:var(--text);
+    box-shadow:0 2px 8px rgba(0,0,0,.04);
+    text-align:left;
+    transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease, background .12s ease;
+}
+
+.home-stage-card:hover,
+.home-stage-card:focus-visible{
+    border-color:rgba(46,125,50,.42);
+    background:#fbfefb;
+    box-shadow:0 6px 16px rgba(0,0,0,.08);
+    outline:none;
+    transform:translateY(-1px);
+}
+
+.home-stage-card:active{
+    transform:scale(.985);
+    box-shadow:0 2px 8px rgba(0,0,0,.05);
+}
+
+.home-stage-card__number{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:42px;
+    height:42px;
+    border-radius:50%;
+    background:var(--primary);
+    color:#fff;
+    font-weight:800;
+}
+
+.home-stage-card__content{
+    display:grid;
+    min-width:0;
+    gap:8px;
+}
+
+.home-stage-card__route{
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    font-size:1.02rem;
+}
+
+.home-stage-card__stats{
+    margin:0;
+}
+
+.home-stage-card__stats .stat{
+    min-height:34px;
+    padding:6px 10px;
+    font-size:.92rem;
+}
+
+.home-stage-card__stats .stat__icon{
+    width:18px;
+    height:18px;
+}
+
+.home-stage-card__arrow{
+    color:var(--primary);
+    font-size:1.4rem;
+    font-weight:800;
+}
+
 .label{
 
     display:block;
@@ -640,6 +734,26 @@ footer{
     .stat{
         min-height:40px;
         padding:8px 11px;
+    }
+
+    .home-stage-card{
+        grid-template-columns:auto minmax(0,1fr) auto;
+        gap:10px;
+        padding:12px;
+    }
+
+    .home-stage-card__number{
+        width:38px;
+        height:38px;
+    }
+
+    .home-stage-card__route{
+        white-space:normal;
+        line-height:1.25;
+    }
+
+    .home-stage-card__stats{
+        gap:6px;
     }
 
     .terrain-button{
