@@ -1,7 +1,7 @@
 "use strict";
 
-const CACHE_NAME = "perinexus-roadbook-add-accommodation-form-20260623";
-const VERSION = "add-accommodation-form-20260623";
+const CACHE_NAME = "perinexus-roadbook-sheet-accommodation-columns-20260624";
+const VERSION = "sheet-accommodation-columns-20260624";
 
 const CORE_ASSETS = [
     "./",
