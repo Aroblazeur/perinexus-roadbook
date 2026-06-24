@@ -635,9 +635,9 @@ function normalizeAccommodationUrl(value) {
 
 function extractSchemaContext(html) {
     const context = { names: [], addresses: [], coordinates: [], sameAsUrls: [], images: [] };
-    const scripts = String(html || "").match(/<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script\s*>/gi) || [];
+    const scripts = String(html || "").match(/<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script[^>]*>/gi) || [];
     scripts.forEach(script => {
-        const json = (script.match(/<script\b[^>]*>([\s\S]*?)<\/script\s*>\s*$/i)?.[1] || "").trim();
+        const json = (script.match(/<script\b[^>]*>([\s\S]*?)<\/script[^>]*>\s*$/i)?.[1] || "").trim();
         if (!json) return;
         let parsed;
         try {
