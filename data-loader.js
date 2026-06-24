@@ -273,6 +273,7 @@ function buildAlternativeAccommodationEntries(urls, names = [], photos = []) {
 }
 
 function syncAccommodationAlternatives(accommodation) {
+    if (!accommodation || typeof accommodation !== "object") return;
     const names = Array.isArray(accommodation?.alternativeNames) ? accommodation.alternativeNames : [];
     const photos = Array.isArray(accommodation?.alternativePhotos) ? accommodation.alternativePhotos : [];
     const alternatives = Array.isArray(accommodation?.alternatives) ? accommodation.alternatives : [];
@@ -283,6 +284,7 @@ function syncAccommodationAlternatives(accommodation) {
 }
 
 function syncStageAlternativeAccommodation(stage) {
+    if (!stage || typeof stage !== "object") return;
     const firstAlternative = stage?.accommodation?.alternatives?.[0] || null;
     stage.alternativeAccommodation = {
         name: firstAlternative?.name || firstAlternative?.url || "",

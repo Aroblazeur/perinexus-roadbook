@@ -55,7 +55,7 @@ const GENERIC_ACCOMMODATION_METADATA_NAMES = Object.freeze([
     "tripadvisor",
     "vrbo",
     "abritel"
-].map(normalizeAccommodationText));
+]);
 
 /**
  * Chargement des données
@@ -437,20 +437,20 @@ function applyAccommodationDisplayData() {
     const collections = [roadbook.stages, roadbook.days].filter(Array.isArray);
     const seen = new Set();
 
-    collections.forEach(days => {
-        days.forEach(day => {
-            const accommodation = day?.accommodation;
+    collections.forEach(collection => {
+        collection.forEach(entry => {
+            const accommodation = entry?.accommodation;
             if (accommodation && typeof accommodation === "object" && !seen.has(accommodation)) {
-                hydrateAccommodationDisplay(accommodation, day?.accommodationType || "");
+                hydrateAccommodationDisplay(accommodation, entry?.accommodationType || "");
                 seen.add(accommodation);
             }
 
-            if (day?.alternativeAccommodation && typeof day.alternativeAccommodation === "object") {
+            if (entry?.alternativeAccommodation && typeof entry.alternativeAccommodation === "object") {
                 const firstAlternative = accommodation?.alternatives?.[0] || null;
-                day.alternativeAccommodation.name =
+                entry.alternativeAccommodation.name =
                     safeText(firstAlternative?.displayName || firstAlternative?.name || firstAlternative?.url, "");
-                day.alternativeAccommodation.photo =
-                    safeText(firstAlternative?.photo, day.alternativeAccommodation.photo || "");
+                entry.alternativeAccommodation.photo =
+                    safeText(firstAlternative?.photo, entry.alternativeAccommodation.photo || "");
             }
         });
     });
@@ -520,7 +520,7 @@ function normalizeAutomaticAccommodationName(name, url = "") {
     if (!value) return "";
 
     const normalized = normalizeAccommodationText(value);
-    if (GENERIC_ACCOMMODATION_METADATA_NAMES.includes(normalized)) return "";
+    if (GENERIC_ACCOMMODATION_METADATA_NAMES.some(item => normalizeAccommodationText(item) === normalized)) return "";
 
     const inferredHostName = inferAccommodationNameFromUrl(url);
     if (inferredHostName && normalized === normalizeAccommodationText(inferredHostName)) return "";
