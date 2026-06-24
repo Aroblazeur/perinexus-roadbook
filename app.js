@@ -410,16 +410,24 @@ function createStageCityLink(city) {
     return link;
 }
 
+function escapeRegExp(value) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function buildStageTitleContent(title, departure, arrival) {
     if (departure && arrival) {
-        const routeLabel = `${departure} → ${arrival}`;
-        if (title.endsWith(routeLabel)) {
-            const routeIndex = title.length - routeLabel.length;
+        const routeMatch = title.match(
+            new RegExp(
+                `^(.*)(${escapeRegExp(departure)})(\\s*(?:→|->|[-–—])\\s*)(${escapeRegExp(arrival)})(\\s*)$`
+            )
+        );
+        if (routeMatch) {
             return [
-                document.createTextNode(title.slice(0, routeIndex)),
+                document.createTextNode(routeMatch[1]),
                 createStageCityLink(departure),
-                document.createTextNode(" → "),
-                createStageCityLink(arrival)
+                document.createTextNode(routeMatch[3]),
+                createStageCityLink(arrival),
+                document.createTextNode(routeMatch[5])
             ];
         }
     }
@@ -429,15 +437,19 @@ function buildStageTitleContent(title, departure, arrival) {
         return [document.createTextNode(title)];
     }
 
-    if (!title.endsWith(city)) {
+    const cityWithTrailingWhitespace = new RegExp(`${escapeRegExp(city)}\\s*$`);
+    if (!cityWithTrailingWhitespace.test(title)) {
         return [document.createTextNode(title)];
     }
 
-    const cityIndex = title.length - city.length;
-    return [
-        document.createTextNode(title.slice(0, cityIndex)),
-        createStageCityLink(city)
-    ];
+    const cityIndex = title.lastIndexOf(city);
+    const previousCharacter = cityIndex > 0 ? title[cityIndex - 1] : "";
+    if (previousCharacter && /[\p{L}\p{N}]/u.test(previousCharacter)) {
+        return [document.createTextNode(title)];
+    }
+
+    const trailingWhitespace = title.slice(cityIndex + city.length);
+    return [document.createTextNode(title.slice(0, cityIndex)), createStageCityLink(city), document.createTextNode(trailingWhitespace)];
 }
 
 function openStage(index) {
