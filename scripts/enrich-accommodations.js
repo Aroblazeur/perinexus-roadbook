@@ -208,7 +208,7 @@ async function enrichUrl(link, addedNamesByUrl) {
             image: resolveHttpUrl(rawImage, finalUrl),
             status: "ok",
             nameMethod: "none",
-            error: "Aucun nom exploitable (titre, og:title, Schema.org, Google Maps, Nominatim)."
+            reason: "Aucun nom exploitable (titre, og:title, Schema.org, Google Maps, Nominatim)."
         };
 
     } catch (error) {
@@ -635,9 +635,9 @@ function normalizeAccommodationUrl(value) {
 
 function extractSchemaContext(html) {
     const context = { names: [], addresses: [], coordinates: [], sameAsUrls: [], images: [] };
-    const scripts = String(html || "").match(/<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi) || [];
+    const scripts = String(html || "").match(/<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script\s*>/gi) || [];
     scripts.forEach(script => {
-        const json = (script.match(/<script\b[^>]*>([\s\S]*?)<\/script>\s*$/i)?.[1] || "").trim();
+        const json = (script.match(/<script\b[^>]*>([\s\S]*?)<\/script\s*>\s*$/i)?.[1] || "").trim();
         if (!json) return;
         let parsed;
         try {
@@ -846,7 +846,8 @@ function printReport(index, total, item) {
     console.log(`  Nom     : ${item.name || "non trouvé"}`);
     console.log(`  Méthode : ${item.nameMethod || "inconnue"}`);
     console.log(`  Image   : ${item.image || "non trouvée"}`);
-    console.log(`  Statut  : ${item.status}${item.error ? ` · ${item.error}` : ""}`);
+    const detail = item.error || item.reason || "";
+    console.log(`  Statut  : ${item.status}${detail ? ` · ${detail}` : ""}`);
 }
 
 function formatError(error) {
