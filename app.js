@@ -932,12 +932,13 @@ function renderPrimaryAccommodation(accommodation, accommodationType = "") {
         detail.className = "detail-name";
         appendAccommodationNameWithIcon(detail, name, accommodationType || name);
         container.appendChild(detail);
+        appendAccommodationResource(container, "", "Hébergement", { name }, name);
         return;
     }
 
     const mainUrl = safeText(accommodation?.website || accommodation?.url, "");
     const mainPhoto = safeText(accommodation?.photo, "");
-    const mainMetadata = mainPhoto ? null : findAccommodationEnrichment(mainUrl);
+    const mainMetadata = findAccommodationEnrichment(mainUrl);
     const mainName = safeText(mainMetadata?.name || accommodation?.name, "");
     section.hidden = !mainName && !mainUrl;
     if (section.hidden) return;
@@ -952,7 +953,9 @@ function renderPrimaryAccommodation(accommodation, accommodationType = "") {
         container,
         mainUrl,
         "Ouvrir le site de l'hébergement",
-        mainPhoto ? { name: mainName, image: mainPhoto } : mainMetadata
+        mainMetadata ? { ...mainMetadata, name: mainName } : { name: mainName },
+        accommodationType || mainName,
+        mainPhoto
     );
 }
 
@@ -1214,13 +1217,14 @@ function appendResourceList(container, title, values, showHeading = true) {
         const item = document.createElement("li");
         const url = typeof value === "object" ? value.url : value;
         const photo = typeof value === "object" ? safeText(value.photo, "") : "";
-        const metadata = photo ? { image: photo } : findAccommodationEnrichment(url);
+        const metadata = findAccommodationEnrichment(url);
         appendAccommodationResource(
             item,
             url,
             `${title} ${index + 1}`,
             metadata,
-            metadata?.name || url
+            metadata?.name || url,
+            photo
         );
         list.appendChild(item);
     });
@@ -1239,33 +1243,82 @@ function appendAccommodationNameWithIcon(container, name, iconSource) {
     container.appendChild(document.createTextNode(name));
 }
 
-function appendAccommodationResource(container, url, fallbackLabel, metadata, iconSource = "") {
-    if (!url && !metadata?.image) return null;
+function appendAccommodationResource(container, url, fallbackLabel, metadata, iconSource = "", manualPhoto = "") {
+    if (!url && !metadata?.image && !manualPhoto && !metadata?.name) return null;
     const label = metadata?.name || fallbackLabel;
     const icon = getAccommodationIcon(iconSource || label);
     const labelWithIcon = icon ? `${icon} ${label}` : label;
 
-    if (!metadata?.image) {
-        return appendResource(container, url, labelWithIcon, "terrain-button terrain-button--secondary");
-    }
-
     const resource = document.createElement("div");
     resource.className = "accommodation-resource";
-    const image = document.createElement("img");
-    image.className = "accommodation-resource__image";
-    image.src = metadata.image;
-    image.loading = "lazy";
-    image.alt = `Photo de ${metadata.name || "l'hébergement"}`;
-    image.addEventListener("error", () => {
-        image.hidden = true;
-        image.removeAttribute("src");
-    }, { once: true });
-    resource.appendChild(image);
+    appendAccommodationVisual(resource, {
+        manualPhoto,
+        automaticPhoto: metadata?.image,
+        websiteUrl: url,
+        label
+    });
     if (url) {
         appendResource(resource, url, labelWithIcon, "terrain-button terrain-button--secondary");
     }
     container.appendChild(resource);
     return resource;
+}
+
+function appendAccommodationVisual(container, { manualPhoto = "", automaticPhoto = "", websiteUrl = "", label = "" } = {}) {
+    const sources = uniqueValues([
+        isSafeUrl(manualPhoto) ? manualPhoto : "",
+        isSafeUrl(automaticPhoto) ? automaticPhoto : "",
+        buildWebsitePreviewUrl(websiteUrl)
+    ]);
+
+    if (!sources.length) {
+        container.appendChild(createAccommodationPlaceholder(label));
+        return;
+    }
+
+    const image = document.createElement("img");
+    image.className = "accommodation-resource__image";
+    image.loading = "lazy";
+    image.alt = `Photo de ${label || "l'hébergement"}`;
+    let sourceIndex = 0;
+    const fallbackToNextSource = () => {
+        sourceIndex += 1;
+        if (sourceIndex < sources.length) {
+            image.src = sources[sourceIndex];
+            return;
+        }
+        image.replaceWith(createAccommodationPlaceholder(label));
+    };
+    image.addEventListener("error", fallbackToNextSource);
+    image.src = sources[sourceIndex];
+    container.appendChild(image);
+}
+
+function buildWebsitePreviewUrl(websiteUrl) {
+    if (!isSafeUrl(websiteUrl) || !/^https?:\/\//i.test(websiteUrl)) return "";
+    return `https://s.wordpress.com/mshots/v1/${encodeURIComponent(websiteUrl)}?w=900`;
+}
+
+function createAccommodationPlaceholder(label = "") {
+    const placeholder = document.createElement("div");
+    placeholder.className = "accommodation-resource__placeholder";
+    placeholder.setAttribute("role", "img");
+    placeholder.setAttribute("aria-label", `Image indisponible pour ${label || "cet hébergement"}`);
+
+    const icon = document.createElement("span");
+    icon.className = "accommodation-resource__placeholder-icon";
+    icon.setAttribute("aria-hidden", "true");
+    icon.textContent = getAccommodationIcon(label) || "🏡";
+
+    const text = document.createElement("span");
+    text.textContent = "Aperçu indisponible";
+
+    placeholder.append(icon, text);
+    return placeholder;
+}
+
+function uniqueValues(values) {
+    return [...new Set(values.map(value => safeText(value, "").trim()).filter(Boolean))];
 }
 
 function findAccommodationEnrichment(url) {

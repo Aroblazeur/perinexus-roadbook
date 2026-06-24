@@ -661,6 +661,33 @@ li{
     display:none;
 }
 
+.accommodation-resource__placeholder{
+    display:grid;
+    place-items:center;
+    gap:8px;
+    width:100%;
+    height:clamp(150px,24vw,220px);
+    padding:18px;
+    border:1px dashed rgba(46,125,50,.28);
+    border-radius:12px;
+    background:linear-gradient(135deg,#f1f8f2,#e7eee8);
+    color:var(--text-light);
+    font-weight:700;
+    text-align:center;
+}
+
+.accommodation-resource__placeholder-icon{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:46px;
+    height:46px;
+    border-radius:50%;
+    background:rgba(46,125,50,.12);
+    color:var(--primary);
+    font-size:1.35rem;
+}
+
 .accommodation-resource .terrain-button{
     width:100%;
 }
