@@ -261,6 +261,13 @@ function createHomeStageCard(day, index) {
     number.className = "home-stage-card__number";
     number.textContent = safeText(day.stage || (index + 1), String(index + 1));
 
+    const accommodationIcon = document.createElement("span");
+    accommodationIcon.className = "home-stage-card__accommodation";
+    accommodationIcon.textContent = accommodationTypeIcon(day.accommodationType);
+    accommodationIcon.title = accommodationTypeLabel(day.accommodationType);
+    accommodationIcon.setAttribute("aria-label", accommodationTypeLabel(day.accommodationType));
+    accommodationIcon.hidden = !accommodationIcon.textContent;
+
     const content = document.createElement("span");
     content.className = "home-stage-card__content";
 
@@ -280,8 +287,32 @@ function createHomeStageCard(day, index) {
     arrow.setAttribute("aria-hidden", "true");
     arrow.textContent = "→";
 
-    button.append(number, content, arrow);
+    button.append(number, accommodationIcon, content, arrow);
     return button;
+}
+
+function accommodationTypeIcon(type) {
+    const normalized = normalizeAccommodationTypeLabel(type);
+    if (normalized === "camping") return "🏕️";
+    if (normalized === "maison") return "🏠";
+    if (normalized === "les deux") return "🏕️🏠";
+    return "";
+}
+
+function accommodationTypeLabel(type) {
+    const normalized = normalizeAccommodationTypeLabel(type);
+    if (normalized === "camping") return "Camping";
+    if (normalized === "maison") return "Maison";
+    if (normalized === "les deux") return "Camping et maison";
+    return "";
+}
+
+function normalizeAccommodationTypeLabel(type) {
+    return String(type || "")
+        .trim()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
 }
 
 function stageRouteLabel(day, index) {
@@ -802,8 +833,9 @@ function renderPrimaryAccommodation(accommodation) {
         return;
     }
 
-    const mainUrl = safeText(accommodation?.url, "");
-    const mainMetadata = findAccommodationEnrichment(mainUrl);
+    const mainUrl = safeText(accommodation?.website || accommodation?.url, "");
+    const mainPhoto = safeText(accommodation?.photo, "");
+    const mainMetadata = mainPhoto ? null : findAccommodationEnrichment(mainUrl);
     const mainName = safeText(mainMetadata?.name || accommodation?.name, "");
     section.hidden = !mainName && !mainUrl;
     if (section.hidden) return;
@@ -814,7 +846,12 @@ function renderPrimaryAccommodation(accommodation) {
         name.textContent = mainName;
         container.appendChild(name);
     }
-    appendAccommodationResource(container, mainUrl, "Ouvrir le site de l'hébergement", mainMetadata);
+    appendAccommodationResource(
+        container,
+        mainUrl,
+        "Ouvrir le site de l'hébergement",
+        mainPhoto ? { name: mainName, image: mainPhoto } : mainMetadata
+    );
 }
 
 function renderAlternativeAccommodation(accommodation, stageNumber) {
@@ -824,24 +861,19 @@ function renderAlternativeAccommodation(accommodation, stageNumber) {
     container.replaceChildren();
 
     const alternatives = Array.isArray(accommodation?.alternatives)
-        ? accommodation.alternatives.filter(Boolean)
-        : [];
-    const houseRentals = Array.isArray(accommodation?.houseRentals)
-        ? accommodation.houseRentals.filter(Boolean)
+        ? accommodation.alternatives
+            .map((url, index) => ({
+                url,
+                photo: safeText(accommodation?.alternativePhotos?.[index], "")
+            }))
+            .filter(item => item.url)
         : [];
 
     section.hidden = false;
 
-    title.textContent = alternatives.length && houseRentals.length
-        ? "Hébergements alternatifs / locations maison"
-        : alternatives.length
-            ? "Hébergements alternatifs"
-            : houseRentals.length
-                ? "Locations maison"
-                : "Hébergements alternatifs";
+    title.textContent = "Hébergements alternatifs";
 
-    appendResourceList(container, "Hébergements alternatifs", alternatives, houseRentals.length > 0);
-    appendResourceList(container, "Locations maison", houseRentals, alternatives.length > 0);
+    appendResourceList(container, "Hébergements alternatifs", alternatives, false);
     appendAddAccommodationButton(container, stageNumber);
 }
 
@@ -1078,11 +1110,13 @@ function appendResourceList(container, title, values, showHeading = true) {
     const list = document.createElement("ul");
     items.forEach((value, index) => {
         const item = document.createElement("li");
+        const url = typeof value === "object" ? value.url : value;
+        const photo = typeof value === "object" ? safeText(value.photo, "") : "";
         appendAccommodationResource(
             item,
-            value,
+            url,
             `${title} ${index + 1}`,
-            findAccommodationEnrichment(value)
+            photo ? { image: photo } : findAccommodationEnrichment(url)
         );
         list.appendChild(item);
     });
@@ -1096,7 +1130,7 @@ function appendResourceList(container, title, values, showHeading = true) {
 }
 
 function appendAccommodationResource(container, url, fallbackLabel, metadata) {
-    if (!url) return null;
+    if (!url && !metadata?.image) return null;
     const label = metadata?.name || fallbackLabel;
 
     if (!metadata?.image) {
@@ -1115,7 +1149,9 @@ function appendAccommodationResource(container, url, fallbackLabel, metadata) {
         image.removeAttribute("src");
     }, { once: true });
     resource.appendChild(image);
-    appendResource(resource, url, label, "terrain-button terrain-button--secondary");
+    if (url) {
+        appendResource(resource, url, label, "terrain-button terrain-button--secondary");
+    }
     container.appendChild(resource);
     return resource;
 }

@@ -95,6 +95,43 @@ function splitMulti(value, { preserveEmpty = false } = {}) {
     return preserveEmpty ? parts : parts.filter(Boolean);
 }
 
+function sanitizeImageUrl(value) {
+    const candidate = String(value ?? "").trim();
+    if (!candidate) return "";
+
+    if (/^https?:\/\//i.test(candidate)) {
+        try {
+            const url = new URL(candidate);
+            return ["http:", "https:"].includes(url.protocol) ? url.href : "";
+        } catch (error) {
+            return "";
+        }
+    }
+
+    const path = candidate.split(/[?#]/)[0];
+    const unsafe =
+        !path ||
+        candidate.startsWith("//") ||
+        candidate.includes("\\") ||
+        /^[a-z][a-z0-9+.-]*:/i.test(candidate) ||
+        path.startsWith("/") ||
+        path.split("/").includes("..");
+
+    return unsafe ? "" : candidate;
+}
+
+function normalizeAccommodationType(value) {
+    const normalized = normalizeHeader(value);
+    if (!normalized) return "";
+    const hasCamping = normalized.includes("camping");
+    const hasHouse = normalized.includes("maison") || normalized.includes("gite") || normalized.includes("gîte") || normalized.includes("location");
+    if (hasCamping && hasHouse) return "les deux";
+    if (hasCamping) return "camping";
+    if (hasHouse) return "maison";
+    if (normalized.includes("deux")) return "les deux";
+    return normalized;
+}
+
 function sanitizeNotePhotoUrl(value) {
     const candidate = String(value ?? "").trim();
     if (!candidate) return "";
@@ -378,17 +415,25 @@ function buildAccommodation(record) {
     const alternativesValue =
         firstValue(record, ["hebergement alternatif", "hebergement alternative"]) ??
         firstValueByPrefix(record, "hebergement alte");
+    const website = firstValue(record, [
+        "site web de l'hébergement",
+        "site web de l hebergement",
+        "site web de l'hebergement",
+        "site web de l hébergement"
+    ]);
+    const alternatives = splitMulti(alternativesValue);
+    const alternativePhotos = splitMulti(
+        firstValue(record, ["photo hebergement alternatif", "photo hébergement alternatif"]),
+        { preserveEmpty: true }
+    ).map(sanitizeImageUrl);
 
     return {
         name: firstValue(record, ["hebergement", "hébergement"]),
-        url: firstValue(record, [
-            "site web de l'hébergement",
-            "site web de l hebergement",
-            "site web de l'hebergement",
-            "site web de l hébergement"
-        ]),
-        alternatives: splitMulti(alternativesValue),
-        houseRentals: splitMulti(firstValue(record, ["possibilite de location maison", "possibilité de location maison"]))
+        website,
+        url: website,
+        photo: sanitizeImageUrl(firstValue(record, ["photo hebergement principal", "photo hébergement principal"])),
+        alternatives,
+        alternativePhotos
     };
 }
 
@@ -478,6 +523,11 @@ function mapEtape(record) {
     const elevationGain = toNumber(firstValue(record, ["d+ (m)"]));
     const elevationLoss = toNumber(firstValue(record, ["d− (m)", "d- (m)"]));
     const accommodation = buildAccommodation(record);
+    const alternativeAccommodation = {
+        name: accommodation.alternatives[0] || "",
+        photo: accommodation.alternativePhotos[0] || ""
+    };
+    const accommodationType = normalizeAccommodationType(firstValue(record, ["type hebergement", "type hébergement"]));
     const routeLabel = [departure, arrival].filter(Boolean).join(" → ");
 
     return {
@@ -492,6 +542,8 @@ function mapEtape(record) {
         gpx,
         mapEmbedUrl,
         accommodation,
+        alternativeAccommodation,
+        accommodationType,
         variants: [],
         title: `Étape ${stageNumber !== null ? stageNumber : "?"}${routeLabel ? ` - ${routeLabel}` : ""}`,
         elevation: elevationGain ?? 0,
