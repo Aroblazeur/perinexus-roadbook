@@ -68,11 +68,11 @@ async function precacheCoreAssets() {
         caches.open(CACHE_NAME),
         caches.open(DATA_CACHE_NAME)
     ]);
+    self.skipWaiting();
     await Promise.all([
         coreCache.addAll(CORE_ASSETS),
         dataCache.addAll(DATA_ASSETS)
     ]);
-    await self.skipWaiting();
 }
 
 async function cleanupCaches() {
