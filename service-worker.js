@@ -24,8 +24,8 @@ const DATA_ASSETS = [
     "data/poi-enrichment.json"
 ];
 const PRECACHE_GROUPS = [
-    { cacheName: CACHE_NAME, assets: CORE_ASSETS },
-    { cacheName: DATA_CACHE_NAME, assets: DATA_ASSETS }
+    { cacheName: CACHE_NAME, assets: CORE_ASSETS, required: true },
+    { cacheName: DATA_CACHE_NAME, assets: DATA_ASSETS, required: false }
 ];
 
 self.addEventListener("message", event => {
@@ -75,13 +75,19 @@ async function precacheCoreAssets() {
         })
     );
 
+    let canActivateImmediately = true;
     results.forEach((result, index) => {
         if (result.status === "rejected") {
             console.warn("[SW] Préchargement partiel échoué :", PRECACHE_GROUPS[index].cacheName, result.reason);
+            if (PRECACHE_GROUPS[index].required) {
+                canActivateImmediately = false;
+            }
         }
     });
 
-    self.skipWaiting();
+    if (canActivateImmediately) {
+        self.skipWaiting();
+    }
 }
 
 async function cleanupCaches() {

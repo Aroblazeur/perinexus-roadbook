@@ -15,6 +15,7 @@ let durationRequestId = 0;
 let isUpdateActivationPending = false;
 let updateCheckPromise = null;
 let updateBannerVisible = false;
+let updateActivationReloadTimeoutId = 0;
 
 const TRAVELER_NOTES_FORM_URL =
     "https://docs.google.com/forms/d/e/1FAIpQLSd_m6lL7ctB7sxz8VOx2Bm7fzNYBUCmXjAZ30YUkV1EK2pmbA/viewform";
@@ -275,7 +276,7 @@ async function checkForAppUpdate({ manual = false } = {}) {
                     busy: false
                 });
                 window.setTimeout(() => {
-                    if (!isUpdateActivationPending && normalizeVersionToken(APP_VERSION_TOKEN) === currentToken) {
+                    if (!isUpdateActivationPending) {
                         setUpdateBanner({
                             visible: false,
                             message: "",
@@ -321,7 +322,7 @@ async function activateAppUpdate() {
     const registration = await getServiceWorkerRegistrationPromise();
     if (registration && registration.waiting) {
         registration.waiting.postMessage({ type: "SKIP_WAITING" });
-        window.setTimeout(() => {
+        updateActivationReloadTimeoutId = window.setTimeout(() => {
             if (isUpdateActivationPending) window.location.reload();
         }, SERVICE_WORKER_ACTIVATION_TIMEOUT);
         return;
@@ -346,6 +347,10 @@ function initializeVersionManagement() {
     navigator.serviceWorker.addEventListener("controllerchange", () => {
         if (!isUpdateActivationPending) return;
         isUpdateActivationPending = false;
+        if (updateActivationReloadTimeoutId) {
+            window.clearTimeout(updateActivationReloadTimeoutId);
+            updateActivationReloadTimeoutId = 0;
+        }
         window.location.reload();
     });
 
