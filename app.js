@@ -240,13 +240,22 @@ async function checkForAppUpdate({ manual = false } = {}) {
 
             if (registration) observeServiceWorkerRegistration(registration);
 
-            if (remoteToken && remoteToken !== currentToken) {
-                if (registration && typeof registration.update === "function") {
-                    await registration.update().catch(error => {
-                        console.warn("[SW] Vérification de mise à jour échouée :", error);
-                    });
-                }
+            if (registration && typeof registration.update === "function") {
+                await registration.update().catch(error => {
+                    console.warn("[SW] Vérification de mise à jour échouée :", error);
+                });
+            }
 
+            if (registration && registration.waiting) {
+                setUpdateBanner({
+                    visible: true,
+                    message: "Une nouvelle version de l’application est disponible.",
+                    actionLabel: "Mettre à jour"
+                });
+                return true;
+            }
+
+            if (remoteToken && remoteToken !== currentToken) {
                 setUpdateBanner({
                     visible: true,
                     message: "Une nouvelle version de l’application est disponible.",

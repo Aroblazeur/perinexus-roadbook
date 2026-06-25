@@ -17,6 +17,8 @@ const CORE_ASSETS = [
     "duration-estimator.js",
     "manifest.webmanifest",
     "icons/icon.svg",
+];
+const DATA_ASSETS = [
     "roadbook.json",
     "data/accommodation-enrichment.json",
     "data/poi-enrichment.json"
@@ -62,8 +64,14 @@ self.addEventListener("fetch", event => {
 });
 
 async function precacheCoreAssets() {
-    const cache = await caches.open(CACHE_NAME);
-    await cache.addAll(CORE_ASSETS);
+    const [coreCache, dataCache] = await Promise.all([
+        caches.open(CACHE_NAME),
+        caches.open(DATA_CACHE_NAME)
+    ]);
+    await Promise.all([
+        coreCache.addAll(CORE_ASSETS),
+        dataCache.addAll(DATA_ASSETS)
+    ]);
     await self.skipWaiting();
 }
 
@@ -71,7 +79,7 @@ async function cleanupCaches() {
     const keys = await caches.keys();
     await Promise.all(
         keys
-            .filter(key => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME)
+            .filter(key => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME && key !== DATA_CACHE_NAME)
             .map(key => caches.delete(key))
     );
     await self.clients.claim();
