@@ -348,12 +348,12 @@ function renderHomeStageList(container) {
 function createHomeStageCard(day, index) {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = day?.isVariant
-        ? "home-stage-card home-stage-card--variant"
+    button.className = day?.isSubstep
+        ? "home-stage-card home-stage-card--substep"
         : "home-stage-card";
     button.addEventListener("click", () => openStage(index));
-    if (day?.isVariant) {
-        button.setAttribute("aria-label", `Variante de l'étape ${safeText(day.parentStage || day.stage, "")} : ${stageRouteLabel(day, index)}`);
+    if (day?.isSubstep) {
+        button.setAttribute("aria-label", `Sous-étape de l'étape ${safeText(day.parentStage || day.stage, "")} : ${stageRouteLabel(day, index)}`);
     }
 
     const number = document.createElement("span");
@@ -367,6 +367,13 @@ function createHomeStageCard(day, index) {
     route.className = "home-stage-card__route";
     route.textContent = stageRouteLabel(day, index);
     content.appendChild(route);
+
+    if (day?.isSubstep && day.type) {
+        const type = document.createElement("span");
+        type.className = "home-stage-card__substep-type";
+        type.textContent = safeText(day.type);
+        content.appendChild(type);
+    }
 
     const stats = document.createElement("span");
     stats.className = "home-stage-card__stats stats stats--compact";
@@ -391,7 +398,7 @@ function accommodationNameForIcon(accommodation) {
 }
 
 function homeStageNumberLabel(day, index) {
-    if (day?.isVariant) return "V";
+    if (day?.isSubstep) return "S";
     return safeText(day.stage || (index + 1), String(index + 1));
 }
 
@@ -784,12 +791,12 @@ function genericAccommodationLabel(typeOrName) {
 }
 
 function stageRouteLabel(day, index) {
-    if (day?.isVariant) {
+    if (day?.isSubstep) {
         const name = safeText(day.name, "");
         const route = [safeText(day.departure, ""), safeText(day.arrival, "")]
             .filter(Boolean)
             .join(" → ");
-        return ["Variante", name || route || safeText(day.title, `Alternative ${index + 1}`)]
+        return ["Sous-étape", name || route || safeText(day.title, `Sous-étape ${index + 1}`)]
             .filter(Boolean)
             .join(" · ");
     }
@@ -882,8 +889,8 @@ function displayDay(index) {
     updateRoadbookChrome(day);
 
     document.getElementById("current-day").textContent =
-        day.isVariant
-            ? `Variante étape ${day.parentStage || day.stage || (index + 1)}`
+        day.isSubstep
+            ? `Sous-étape ${day.parentStage || day.stage || (index + 1)}`
             : day.day || `Étape ${day.stage || (index + 1)}`;
 
     renderStageTitle(day, index);
