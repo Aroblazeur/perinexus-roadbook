@@ -59,9 +59,7 @@ const ADDED_ACCOMMODATION_URL_HEADERS = [
     "lien"
 ];
 const ADDED_ACCOMMODATION_NAME_HEADERS = [
-    "nom",
-    "nom hebergement",
-    "nom hébergement"
+    "nom"
 ];
 const ADDED_ACCOMMODATION_PHOTO_HEADERS = [
     "photo",
@@ -183,15 +181,22 @@ function mapTravelerNote(record) {
 }
 
 function attachTravelerNotes(stages, rows) {
-    const stagesByNumber = new Map(stages.map(stage => [stage.stage, stage]));
+    const stagesByNumber = stages.reduce((map, stage) => {
+        if (stage.stage === null || stage.stage === undefined) return map;
+        const key = stage.stage;
+        if (!map.has(key)) map.set(key, []);
+        map.get(key).push(stage);
+        return map;
+    }, new Map());
     rows
         .map(mapTravelerNote)
         .filter(note => note.stageReference !== null && note.text)
         .forEach(note => {
-            const stage = stagesByNumber.get(note.stageReference);
-            if (!stage) return;
-            if (!Array.isArray(stage.noteItems)) stage.noteItems = [];
-            stage.noteItems.push({ text: note.text, photo: note.photo });
+            const targets = stagesByNumber.get(note.stageReference) || [];
+            targets.forEach(stage => {
+                if (!Array.isArray(stage.noteItems)) stage.noteItems = [];
+                stage.noteItems.push({ text: note.text, photo: note.photo });
+            });
         });
 }
 
@@ -294,13 +299,19 @@ function syncStageAlternativeAccommodation(stage) {
 }
 
 function attachAddedAccommodations(stages, rows) {
-    const stagesByNumber = new Map(stages.map(stage => [stage.stage, stage]));
+    const stagesByNumber = stages.reduce((map, stage) => {
+        if (stage.stage === null || stage.stage === undefined) return map;
+        const key = stage.stage;
+        if (!map.has(key)) map.set(key, []);
+        map.get(key).push(stage);
+        return map;
+    }, new Map());
     rows
         .map(mapAddedAccommodation)
         .filter(entry => entry.stageReference !== null && entry.url)
         .forEach(entry => {
-            const stage = stagesByNumber.get(entry.stageReference);
-            if (!stage) return;
+            const targets = stagesByNumber.get(entry.stageReference) || [];
+            targets.forEach(stage => {
 
             const accommodation = stage.accommodation || {};
             if (!Array.isArray(accommodation.alternatives)) accommodation.alternatives = [];
@@ -334,6 +345,7 @@ function attachAddedAccommodations(stages, rows) {
             accommodation.alternativePhotos = accommodation.alternatives.map(item => item.photo || "");
             stage.accommodation = accommodation;
             syncStageAlternativeAccommodation(stage);
+            });
         });
 }
 
@@ -518,7 +530,7 @@ function buildAccommodation(record) {
     const alternativeEntries = buildAlternativeAccommodationEntries(alternatives, alternativeNames, alternativePhotos);
 
     return {
-        name: firstValue(record, ["nom hebergement", "nom hébergement", "hebergement", "hébergement"]),
+        name: firstValue(record, ["hebergement", "hébergement"]),
         website,
         url: website,
         photo: sanitizeImageUrl(firstValue(record, ["photo hebergement principal", "photo hébergement principal"])),
@@ -577,30 +589,6 @@ function buildComputedStagesTotal(stages, marker = null) {
     };
 }
 
-function createVariant(fields = {}) {
-    return {
-        stageReference: null,
-        day: null,
-        name: null,
-        type: null,
-        departure: null,
-        arrival: null,
-        distance: null,
-        elevationGain: null,
-        elevationLoss: null,
-        distanceExtra: null,
-        elevationGainExtra: null,
-        elevationLossExtra: null,
-        pointsOfInterest: [],
-        description: null,
-        link: null,
-        gpx: null,
-        mapEmbedUrl: null,
-        enabled: true,
-        ...fields
-    };
-}
-
 function mapEtape(record) {
     const stageNumber = toNumber(firstValue(record, ["numero etape"]));
     const dayLabel = firstValue(record, ["jour"]);
@@ -620,11 +608,20 @@ function mapEtape(record) {
         photo: firstAlternative?.photo || ""
     };
     const accommodationType = normalizeAccommodationType(firstValue(record, ["type hebergement", "type hébergement"]));
+    const type = firstValue(record, ["type"]) || "principale";
     const routeLabel = [departure, arrival].filter(Boolean).join(" → ");
 
     return {
+        id: `stage-${stageNumber ?? "unknown"}`,
+        itemType: "main",
+        isVariant: false,
+        hierarchyLevel: 0,
+        parentStage: null,
+        parentStageReference: null,
         stage: stageNumber,
         day: dayLabel,
+        name: routeLabel || `Étape ${stageNumber !== null ? stageNumber : "?"}`,
+        type,
         departure,
         arrival,
         distance,
@@ -643,43 +640,42 @@ function mapEtape(record) {
         description: "",
         noteItems: splitMulti(notes),
         pois,
+        pointsOfInterest: pois,
+        interest: pois,
+        restaurants: [],
+        shops: [],
+        water: [],
+        warning: [],
         legacyAccommodation: accommodation.name || ""
     };
 }
 
 function mapEtapeVarianteFromEtape(record) {
     const stageNumber = toNumber(firstValue(record, ["numero etape"]));
-    const departure = firstValue(record, ["depart", "départ"]);
-    const arrival = firstValue(record, ["arrivee", "arrivée"]);
-    const distance = toNumber(firstValue(record, ["distance (km)"]));
-    const elevationGain = toNumber(firstValue(record, ["d+ (m)"]));
-    const elevationLoss = toNumber(firstValue(record, ["d− (m)", "d- (m)"]));
-    const gpx = firstValue(record, ["gpx"]);
-    const pois = buildPoiEntries(record);
-    const notes = firstValue(record, ["notes"]);
-    const mapEmbedUrl = sanitizeMapEmbedUrl(firstValue(record, ["lien d'integration de map"]));
-    const routeLabel = [departure, arrival].filter(Boolean).join(" → ");
+    const stage = mapEtape(record);
+    const routeLabel = [stage.departure, stage.arrival].filter(Boolean).join(" → ");
 
-    return createVariant({
+    return {
+        ...stage,
+        id: `variant-${stageNumber ?? "unknown"}-${compactKey(routeLabel || stage.day || stage.type || "row")}`,
+        itemType: "variant",
+        isVariant: true,
+        hierarchyLevel: 1,
+        parentStage: stageNumber,
+        parentStageReference: stageNumber,
         stageReference: stageNumber,
-        day: toNumber(firstValue(record, ["jour"])),
+        stage: stageNumber,
+        day: firstValue(record, ["jour"]),
         name: routeLabel || `Variante étape ${stageNumber ?? "?"}`,
         type: firstValue(record, ["type"]) || "variante",
-        departure,
-        arrival,
-        distance,
-        elevationGain,
-        elevationLoss,
         distanceExtra: null,
         elevationGainExtra: null,
         elevationLossExtra: null,
-        pointsOfInterest: pois,
-        description: notes,
+        description: stage.notes || "",
         link: null,
-        gpx,
-        mapEmbedUrl,
-        enabled: true
-    });
+        enabled: true,
+        title: `Variante ${stageNumber !== null ? stageNumber : "?"}${routeLabel ? ` - ${routeLabel}` : ""}`
+    };
 }
 
 function mapVariante(record) {
@@ -693,24 +689,71 @@ function mapVariante(record) {
         ])
     );
     const type = firstValue(record, ["type"]) || "option";
+    const departure = firstValue(record, ["depart", "départ"]);
+    const arrival = firstValue(record, ["arrivee", "arrivée"]);
+    const distance = toNumber(firstValue(record, ["distance (km)"]));
+    const elevationGain = toNumber(firstValue(record, ["d+ (m)"]));
+    const elevationLoss = toNumber(firstValue(record, ["d− (m)", "d- (m)"]));
+    const notes = firstValue(record, ["notes"]);
+    const pois = buildPoiEntries(record);
+    const gpx = firstValue(record, ["gpx"]);
+    const mapEmbedUrl = sanitizeMapEmbedUrl(firstValue(record, ["lien d'integration de map"]));
+    const accommodation = buildAccommodation(record);
+    const firstAlternative = accommodation.alternatives[0] || null;
+    const alternativeAccommodation = {
+        name: firstAlternative?.name || firstAlternative?.url || "",
+        photo: firstAlternative?.photo || ""
+    };
+    const accommodationType = normalizeAccommodationType(firstValue(record, ["type hebergement", "type hébergement"]));
+    const name =
+        firstValue(record, ["nom variante", "nom option", "nom"]) ||
+        [departure, arrival].filter(Boolean).join(" → ") ||
+        type ||
+        `Alternative étape ${stageReference ?? "?"}`;
 
-    return createVariant({
+    return {
+        id: `variant-${stageReference ?? "unknown"}-${compactKey(name) || "option"}`,
+        itemType: "variant",
+        isVariant: true,
+        hierarchyLevel: 1,
+        parentStage: stageReference,
+        parentStageReference: stageReference,
+        stage: stageReference,
         stageReference,
-        day: toNumber(firstValue(record, ["jour"])),
-        name:
-            firstValue(record, ["nom variante", "nom option", "nom"]) ||
-            type ||
-            `Alternative étape ${stageReference ?? "?"}`,
+        day: firstValue(record, ["jour"]),
+        name,
         type,
+        departure,
+        arrival,
+        distance,
+        elevationGain,
+        elevationLoss,
         distanceExtra: toNumber(firstValue(record, ["distance supplementaire (km)", "distance supplémentaire (km)"])),
         elevationGainExtra: toNumber(firstValue(record, ["d+ supplementaire (m)", "d+ supplémentaire (m)"])),
         elevationLossExtra: toNumber(firstValue(record, ["d− supplementaire (m)", "d− supplémentaire (m)", "d- supplementaire (m)", "d- supplémentaire (m)"])),
-        pointsOfInterest: buildPoiEntries(record),
-        description: firstValue(record, ["description / photos"]),
+        pois,
+        pointsOfInterest: pois,
+        interest: pois,
+        restaurants: [],
+        shops: [],
+        water: [],
+        warning: [],
+        notes,
+        noteItems: splitMulti(notes),
+        description: notes || firstValue(record, ["description / photos"]) || "",
         link: firstValue(record, ["lien"]),
-        gpx: firstValue(record, ["gpx"]),
+        gpx,
+        mapEmbedUrl,
+        accommodation,
+        alternativeAccommodation,
+        accommodationType,
+        variants: [],
+        title: `Variante ${stageReference !== null ? stageReference : "?"} - ${name}`,
+        elevation: elevationGain ?? 0,
+        duration: "",
+        legacyAccommodation: accommodation.name || "",
         enabled: true
-    });
+    };
 }
 
 function attachVariants(stages, variants) {
@@ -721,6 +764,7 @@ function attachVariants(stages, variants) {
 
     let attached = 0;
     let unmatched = 0;
+    const attachedVariants = [];
 
     variants.forEach(variant => {
         const refNumber = toNumber(variant.stageReference);
@@ -740,12 +784,20 @@ function attachVariants(stages, variants) {
         }
 
         if (!Array.isArray(stage.variants)) stage.variants = [];
-        stage.variants.push({
+        const attachedVariant = {
             ...variant,
+            parentStage: refNumber,
+            parentStageReference: refNumber,
+            hierarchyLevel: 1,
+            isVariant: true,
+            itemType: "variant",
+            parentTitle: stage.title,
             pointsOfInterest: Array.isArray(variant.pointsOfInterest)
                 ? [...variant.pointsOfInterest]
                 : []
-        });
+        };
+        stage.variants.push(attachedVariant);
+        attachedVariants.push(attachedVariant);
         attached++;
     });
 
@@ -755,6 +807,19 @@ function attachVariants(stages, variants) {
         `Variantes rattachées : ${attached}\n` +
         `Variantes ignorées : ${unmatched}`
     );
+
+    return attachedVariants;
+}
+
+function buildNavigableStages(stages) {
+    const days = [];
+    stages.forEach(stage => {
+        days.push(stage);
+        if (Array.isArray(stage.variants)) {
+            stage.variants.forEach(variant => days.push(variant));
+        }
+    });
+    return days;
 }
 
 function buildRoadbook(etapesRows, variantesRows, travelerNotesRows = [], addedAccommodationRows = []) {
@@ -807,17 +872,18 @@ function buildRoadbook(etapesRows, variantesRows, travelerNotesRows = [], addedA
 
     attachVariants(stages, alternativesFromEtapes);
     attachVariants(stages, variantesFromSecondSheet);
+    const navigableStages = buildNavigableStages(stages);
 
-    attachTravelerNotes(stages, travelerNotesRows);
+    attachTravelerNotes(navigableStages, travelerNotesRows);
     summary.stagesTotal = buildComputedStagesTotal(stages, summary.stagesTotalMarker);
-    attachAddedAccommodations(stages, addedAccommodationRows);
+    attachAddedAccommodations(navigableStages, addedAccommodationRows);
 
     return {
         title: ROADBOOK_TITLE || "Roadbook vélo",
         description: "Roadbook d'itinérance à vélo.",
         summary,
         stages,
-        days: stages.map(stage => ({ ...stage }))
+        days: navigableStages
     };
 }
 
