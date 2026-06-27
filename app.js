@@ -348,12 +348,17 @@ function renderHomeStageList(container) {
 function createHomeStageCard(day, index) {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "home-stage-card";
+    button.className = day?.isVariant
+        ? "home-stage-card home-stage-card--variant"
+        : "home-stage-card";
     button.addEventListener("click", () => openStage(index));
+    if (day?.isVariant) {
+        button.setAttribute("aria-label", `Variante de l'étape ${safeText(day.parentStage || day.stage, "")} : ${stageRouteLabel(day, index)}`);
+    }
 
     const number = document.createElement("span");
     number.className = "home-stage-card__number";
-    number.textContent = safeText(day.stage || (index + 1), String(index + 1));
+    number.textContent = homeStageNumberLabel(day, index);
 
     const content = document.createElement("span");
     content.className = "home-stage-card__content";
@@ -383,6 +388,11 @@ function createHomeStageCard(day, index) {
 function accommodationNameForIcon(accommodation) {
     if (typeof accommodation === "string") return accommodation;
     return accommodation?.displayName || accommodation?.name || accommodation?.website || accommodation?.url || "";
+}
+
+function homeStageNumberLabel(day, index) {
+    if (day?.isVariant) return "V";
+    return safeText(day.stage || (index + 1), String(index + 1));
 }
 
 function setAccommodationIcon(element, typeOrName) {
@@ -774,6 +784,16 @@ function genericAccommodationLabel(typeOrName) {
 }
 
 function stageRouteLabel(day, index) {
+    if (day?.isVariant) {
+        const name = safeText(day.name, "");
+        const route = [safeText(day.departure, ""), safeText(day.arrival, "")]
+            .filter(Boolean)
+            .join(" → ");
+        return ["Variante", name || route || safeText(day.title, `Alternative ${index + 1}`)]
+            .filter(Boolean)
+            .join(" · ");
+    }
+
     const departure = safeText(day.departure, "");
     const arrival = safeText(day.arrival, "");
     const route = [departure, arrival].filter(Boolean).join(" → ");
@@ -862,7 +882,9 @@ function displayDay(index) {
     updateRoadbookChrome(day);
 
     document.getElementById("current-day").textContent =
-        day.day || `Étape ${day.stage || (index + 1)}`;
+        day.isVariant
+            ? `Variante étape ${day.parentStage || day.stage || (index + 1)}`
+            : day.day || `Étape ${day.stage || (index + 1)}`;
 
     renderStageTitle(day, index);
 
@@ -971,7 +993,6 @@ function setStageSectionsHidden(hidden) {
         "pois-section",
         "primary-accommodation-card",
         "map-embed-section",
-        "variants-section",
         "alternative-accommodation-card"
     ].forEach(id => setSectionHidden(id, hidden));
 }
@@ -1216,7 +1237,7 @@ function appendPoiCard(list, entry) {
 
     if (entry.region) {
         const region = document.createElement("p");
-        region.className = "variant-subtitle";
+        region.className = "poi-card__region";
         region.textContent = entry.region;
         content.appendChild(region);
     }
@@ -1264,8 +1285,6 @@ function renderPoiList(list, pois) {
 }
 
 function renderFieldNavigation(day) {
-    const activeVariants = Array.isArray(day.variants) ? day.variants : [];
-    renderVariants(activeVariants);
     renderAccommodation(day.accommodation);
 }
 
@@ -1368,116 +1387,6 @@ function buildAddAccommodationFormUrl(stageNumber) {
     url.searchParams.set("usp", "pp_url");
     url.searchParams.set(ADD_ACCOMMODATION_STAGE_FIELD, safeText(stageNumber, ""));
     return url.href;
-}
-
-function isVarianteCourte(type) {
-    if (!type) return false;
-    const normalized = String(type).trim().toLowerCase()
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    return normalized.includes("courte");
-}
-
-function variantDisplayLabel(variant) {
-    return isVarianteCourte(variant.type)
-        ? "Variante courte"
-        : safeText(variant.name, "Alternative");
-}
-
-function variantTitleIdBase(variant) {
-    const parts = [
-        variant?.type,
-        variant?.name,
-        variant?.departure,
-        variant?.arrival,
-        variant?.stageReference,
-        variant?.day
-    ].map(value => safeText(value, "")
-        .trim()
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, ""))
-        .filter(Boolean);
-
-    return `variant-title-${parts.join("-") || "alternative"}`;
-}
-
-function renderVariants(variants) {
-    const section = document.getElementById("variants-section");
-    const content = document.getElementById("variant-content");
-    content.replaceChildren();
-    content.classList.toggle("variant-cards", variants.length > 0);
-    section.hidden = variants.length === 0;
-
-    if (variants.length === 0) return;
-
-    const titleIdCounts = new Map();
-
-    variants.forEach(variant => {
-        const block = document.createElement("article");
-        block.className = "variant-block variant-card";
-
-        const courte = isVarianteCourte(variant.type);
-
-        const name = document.createElement("h3");
-        name.className = "variant-title";
-        name.textContent = variantDisplayLabel(variant);
-        const baseTitleId = variantTitleIdBase(variant);
-        const duplicateIndex = (titleIdCounts.get(baseTitleId) || 0) + 1;
-        titleIdCounts.set(baseTitleId, duplicateIndex);
-        const titleId = duplicateIndex === 1 ? baseTitleId : `${baseTitleId}-${duplicateIndex}`;
-        name.id = titleId;
-        block.setAttribute("aria-labelledby", titleId);
-        block.appendChild(name);
-
-        if (courte && variant.name) {
-            const subtitle = document.createElement("p");
-            subtitle.className = "variant-subtitle";
-            subtitle.textContent = safeText(variant.name);
-            block.appendChild(subtitle);
-        }
-
-        const details = [];
-        if (!courte && variant.type) details.push(safeText(variant.type));
-        if (Number.isFinite(variant.distance)) details.push(`Distance : ${variant.distance} km`);
-        if (Number.isFinite(variant.elevationGain)) details.push(`D+ ${variant.elevationGain} m`);
-        if (Number.isFinite(variant.elevationLoss)) details.push(`D− ${variant.elevationLoss} m`);
-        if (Number.isFinite(variant.distanceExtra)) details.push(`Écart distance : +${variant.distanceExtra} km`);
-        if (Number.isFinite(variant.elevationGainExtra)) details.push(`Écart D+ : ${variant.elevationGainExtra} m`);
-        if (Number.isFinite(variant.elevationLossExtra)) details.push(`Écart D− : ${variant.elevationLossExtra} m`);
-        if (variant.departure) details.push(`Départ : ${variant.departure}`);
-        if (variant.arrival) details.push(`Arrivée : ${variant.arrival}`);
-        if (details.length) {
-            const text = document.createElement("p");
-            text.className = "variant-details";
-            text.textContent = details.join(" · ");
-            block.appendChild(text);
-        }
-
-        if (variant.description) {
-            const description = document.createElement("p");
-            description.className = "variant-description";
-            description.textContent = variant.description;
-            block.appendChild(description);
-        }
-
-        if (Array.isArray(variant.pointsOfInterest) && variant.pointsOfInterest.length) {
-            const poiHeading = document.createElement("p");
-            poiHeading.className = "variant-poi-heading";
-            poiHeading.textContent = "Points d'intérêt :";
-            block.appendChild(poiHeading);
-            const poiList = document.createElement("ul");
-            poiList.className = "variant-poi-list";
-            renderPoiList(poiList, variant.pointsOfInterest);
-            block.appendChild(poiList);
-        }
-
-        appendGpxActions(block, variant.gpx, variantDisplayLabel(variant));
-        appendResource(block, variant.link, "Ouvrir le lien de l'alternative", "terrain-button terrain-button--secondary");
-
-        content.appendChild(block);
-    });
 }
 
 function resolveStageGpxUrl(url) {
