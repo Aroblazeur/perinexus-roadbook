@@ -348,7 +348,7 @@ button:disabled{
     transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease, background .12s ease;
 }
 
-.home-stage-card--variant{
+.home-stage-card--substep{
     width:calc(100% - 28px);
     margin-left:28px;
     min-height:64px;
@@ -359,7 +359,7 @@ button:disabled{
     opacity:.92;
 }
 
-.home-stage-card--variant .home-stage-card__number{
+.home-stage-card--substep .home-stage-card__number{
     width:34px;
     height:34px;
     background:#e7f3e9;
@@ -368,9 +368,26 @@ button:disabled{
     font-size:.9rem;
 }
 
-.home-stage-card--variant .home-stage-card__route{
+.home-stage-card--substep .home-stage-card__route{
     font-size:.96rem;
     color:var(--text-light);
+}
+
+.home-stage-card__substep-type{
+    display:inline-flex;
+    align-items:center;
+    width:fit-content;
+    max-width:100%;
+    padding:3px 8px;
+    border-radius:999px;
+    background:#eef7ef;
+    color:var(--primary-dark);
+    border:1px solid rgba(46,125,50,.16);
+    font-size:.78rem;
+    font-weight:700;
+    line-height:1.25;
+    overflow-wrap:anywhere;
+    white-space:normal;
 }
 
 .poi-card__region{
@@ -835,7 +852,7 @@ footer{
         padding:12px;
     }
 
-    .home-stage-card--variant{
+    .home-stage-card--substep{
         width:calc(100% - 18px);
         margin-left:18px;
     }

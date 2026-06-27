@@ -20,8 +20,6 @@ const ROADBOOK_TITLE = "pirenexus a vélo";
 const FALLBACK_PATHS = ["roadbook.json"];
 const NETWORK_FIRST_FETCH_OPTIONS = { cache: "no-store" };
 
-const NO_STAGE_NUMBER_KEY = "__sans_numero__";
-
 const ERROR_MESSAGES = {
     NETWORK: "erreur réseau",
     INVALID_CSV: "CSV invalide",
@@ -30,7 +28,6 @@ const ERROR_MESSAGES = {
 
 const REQUIRED_ETAPES_HEADERS = [
     "numero etape",
-    "type",
     "jour",
     "depart",
     "arrivee",
@@ -484,8 +481,27 @@ function summaryRowKind(record) {
     return null;
 }
 
+function isUnlabeledSummaryRow(record) {
+    const hasStageIdentity = [
+        firstValue(record, ["numero etape"]),
+        firstValue(record, ["depart", "départ"]),
+        firstValue(record, ["arrivee", "arrivée"])
+    ].some(value => normalizeValue(value));
+
+    if (hasStageIdentity) return false;
+
+    return [
+        firstValue(record, ["distance (km)"]),
+        firstValue(record, ["d+ (m)"]),
+        firstValue(record, ["d− (m)", "d- (m)"]),
+        firstValue(record, ["lien d'integration de map"]),
+        firstValue(record, ["gpx"]),
+        firstValue(record, ["lien"])
+    ].some(value => normalizeValue(value));
+}
+
 function isSummaryRow(record) {
-    return summaryRowKind(record) !== null;
+    return summaryRowKind(record) !== null || isUnlabeledSummaryRow(record);
 }
 
 function sanitizeMapEmbedUrl(value) {
@@ -557,9 +573,15 @@ function buildSummary(rows) {
         stagesTotal: null,
         stagesTotalMarker: null
     };
+    let unlabeledSummaryIndex = 0;
 
     rows.forEach(row => {
-        const kind = summaryRowKind(row);
+        let kind = summaryRowKind(row);
+        if (!kind && isUnlabeledSummaryRow(row)) {
+            kind = unlabeledSummaryIndex === 0 ? "official" : "stagesTotal";
+            unlabeledSummaryIndex += 1;
+        }
+
         if (kind === "official") {
             summary.official = mapSummaryRow(row);
         }
@@ -608,13 +630,13 @@ function mapEtape(record) {
         photo: firstAlternative?.photo || ""
     };
     const accommodationType = normalizeAccommodationType(firstValue(record, ["type hebergement", "type hébergement"]));
-    const type = firstValue(record, ["type"]) || "principale";
+    const type = "principale";
     const routeLabel = [departure, arrival].filter(Boolean).join(" → ");
 
     return {
         id: `stage-${stageNumber ?? "unknown"}`,
         itemType: "main",
-        isVariant: false,
+        isSubstep: false,
         hierarchyLevel: 0,
         parentStage: null,
         parentStageReference: null,
@@ -633,7 +655,7 @@ function mapEtape(record) {
         accommodation,
         alternativeAccommodation,
         accommodationType,
-        variants: [],
+        substeps: [],
         title: `Étape ${stageNumber !== null ? stageNumber : "?"}${routeLabel ? ` - ${routeLabel}` : ""}`,
         elevation: elevationGain ?? 0,
         duration: "",
@@ -650,35 +672,7 @@ function mapEtape(record) {
     };
 }
 
-function mapEtapeVarianteFromEtape(record) {
-    const stageNumber = toNumber(firstValue(record, ["numero etape"]));
-    const stage = mapEtape(record);
-    const routeLabel = [stage.departure, stage.arrival].filter(Boolean).join(" → ");
-
-    return {
-        ...stage,
-        id: `variant-${stageNumber ?? "unknown"}-${compactKey(routeLabel || stage.day || stage.type || "row")}`,
-        itemType: "variant",
-        isVariant: true,
-        hierarchyLevel: 1,
-        parentStage: stageNumber,
-        parentStageReference: stageNumber,
-        stageReference: stageNumber,
-        stage: stageNumber,
-        day: firstValue(record, ["jour"]),
-        name: routeLabel || `Variante étape ${stageNumber ?? "?"}`,
-        type: firstValue(record, ["type"]) || "variante",
-        distanceExtra: null,
-        elevationGainExtra: null,
-        elevationLossExtra: null,
-        description: stage.notes || "",
-        link: null,
-        enabled: true,
-        title: `Variante ${stageNumber !== null ? stageNumber : "?"}${routeLabel ? ` - ${routeLabel}` : ""}`
-    };
-}
-
-function mapVariante(record) {
+function mapSubstep(record) {
     const stageReference = toNumber(
         firstValue(record, [
             "etape principale associe",
@@ -712,9 +706,9 @@ function mapVariante(record) {
         `Alternative étape ${stageReference ?? "?"}`;
 
     return {
-        id: `variant-${stageReference ?? "unknown"}-${compactKey(name) || "option"}`,
-        itemType: "variant",
-        isVariant: true,
+        id: `substep-${stageReference ?? "unknown"}-${compactKey(name) || "option"}`,
+        itemType: "substep",
+        isSubstep: true,
         hierarchyLevel: 1,
         parentStage: stageReference,
         parentStageReference: stageReference,
@@ -747,8 +741,8 @@ function mapVariante(record) {
         accommodation,
         alternativeAccommodation,
         accommodationType,
-        variants: [],
-        title: `Variante ${stageReference !== null ? stageReference : "?"} - ${name}`,
+        substeps: [],
+        title: `${type || "Sous-étape"} ${stageReference !== null ? stageReference : "?"} - ${name}`,
         elevation: elevationGain ?? 0,
         duration: "",
         legacyAccommodation: accommodation.name || "",
@@ -756,7 +750,7 @@ function mapVariante(record) {
     };
 }
 
-function attachVariants(stages, variants) {
+function attachSubsteps(stages, substeps) {
     const byNumber = new Map();
     stages.forEach(stage => {
         if (stage.stage !== null) byNumber.set(stage.stage, stage);
@@ -764,14 +758,14 @@ function attachVariants(stages, variants) {
 
     let attached = 0;
     let unmatched = 0;
-    const attachedVariants = [];
+    const attachedSubsteps = [];
 
-    variants.forEach(variant => {
-        const refNumber = toNumber(variant.stageReference);
+    substeps.forEach(substep => {
+        const refNumber = toNumber(substep.stageReference);
 
         if (refNumber === null) {
             unmatched++;
-            console.warn(`[Roadbook] Variante ignorée : "${variant.name}" — aucune référence d'étape.`);
+            console.warn(`[Roadbook] Sous-étape ignorée : "${substep.name}" — aucune référence d'étape.`);
             return;
         }
 
@@ -779,44 +773,44 @@ function attachVariants(stages, variants) {
 
         if (!stage) {
             unmatched++;
-            console.warn(`[Roadbook] Variante ignorée : "${variant.name}" — étape ${refNumber} introuvable.`);
+            console.warn(`[Roadbook] Sous-étape ignorée : "${substep.name}" — étape ${refNumber} introuvable.`);
             return;
         }
 
-        if (!Array.isArray(stage.variants)) stage.variants = [];
-        const attachedVariant = {
-            ...variant,
+        if (!Array.isArray(stage.substeps)) stage.substeps = [];
+        const attachedSubstep = {
+            ...substep,
             parentStage: refNumber,
             parentStageReference: refNumber,
             hierarchyLevel: 1,
-            isVariant: true,
-            itemType: "variant",
+            isSubstep: true,
+            itemType: "substep",
             parentTitle: stage.title,
-            pointsOfInterest: Array.isArray(variant.pointsOfInterest)
-                ? [...variant.pointsOfInterest]
+            pointsOfInterest: Array.isArray(substep.pointsOfInterest)
+                ? [...substep.pointsOfInterest]
                 : []
         };
-        stage.variants.push(attachedVariant);
-        attachedVariants.push(attachedVariant);
+        stage.substeps.push(attachedSubstep);
+        attachedSubsteps.push(attachedSubstep);
         attached++;
     });
 
     console.log(
         `Étapes : ${stages.length}\n` +
-        `Variantes : ${variants.length}\n` +
-        `Variantes rattachées : ${attached}\n` +
-        `Variantes ignorées : ${unmatched}`
+        `Sous-étapes : ${substeps.length}\n` +
+        `Sous-étapes rattachées : ${attached}\n` +
+        `Sous-étapes ignorées : ${unmatched}`
     );
 
-    return attachedVariants;
+    return attachedSubsteps;
 }
 
 function buildNavigableStages(stages) {
     const days = [];
     stages.forEach(stage => {
         days.push(stage);
-        if (Array.isArray(stage.variants)) {
-            stage.variants.forEach(variant => days.push(variant));
+        if (Array.isArray(stage.substeps)) {
+            stage.substeps.forEach(substep => days.push(substep));
         }
     });
     return days;
@@ -825,53 +819,14 @@ function buildNavigableStages(stages) {
 function buildRoadbook(etapesRows, variantesRows, travelerNotesRows = [], addedAccommodationRows = []) {
     const summary = buildSummary(etapesRows);
     const stageRows = etapesRows.filter(row => !isSummaryRow(row));
+    const stages = stageRows.map(mapEtape);
 
-    // Group ALL rows by "Numero etape" — no row is discarded based on Type
-    const groups = new Map();
-    stageRows.forEach(row => {
-        const num = firstValue(row, ["numero etape"]);
-        const key = num !== null ? String(num) : NO_STAGE_NUMBER_KEY;
-        if (!groups.has(key)) groups.set(key, []);
-        groups.get(key).push(row);
-    });
-
-    const stages = [];
-    const alternativesFromEtapes = [];
-
-    const stageNumberFromRow = row => toNumber(firstValue(row, ["numero etape"]));
-
-    groups.forEach((rows, key) => {
-        // Choose the row whose Type (normalised) contains "principale", else the first row
-        const mainIndex = Math.max(0, rows.findIndex(row =>
-            normalizeHeader(firstValue(row, ["type"]) || "").includes("principale")
-        ));
-
-        const mainRow = rows[mainIndex];
-        const groupStageNumber =
-            stageNumberFromRow(mainRow) ??
-            (key === NO_STAGE_NUMBER_KEY ? null : toNumber(key));
-
-        stages.push(mapEtape(mainRow));
-
-        rows.forEach((row, i) => {
-            if (i === mainIndex) return;
-            const variant = mapEtapeVarianteFromEtape(row);
-            variant.stageReference =
-                stageNumberFromRow(row) ??
-                groupStageNumber;
-            alternativesFromEtapes.push(variant);
-        });
-    });
-
-    console.log(`[Roadbook] Groupes (étapes uniques) : ${groups.size}`);
     console.log(`[Roadbook] Lignes principales choisies : ${stages.length}`);
-    console.log(`[Roadbook] Lignes alternatives (étapes) : ${alternativesFromEtapes.length}`);
-    console.log(`[Roadbook] Lignes variantes (feuille variantes) : ${variantesRows.length}`);
+    console.log(`[Roadbook] Lignes sous-étapes (feuille Variante et option) : ${variantesRows.length}`);
 
-    const variantesFromSecondSheet = variantesRows.map(mapVariante);
+    const substeps = variantesRows.map(mapSubstep);
 
-    attachVariants(stages, alternativesFromEtapes);
-    attachVariants(stages, variantesFromSecondSheet);
+    attachSubsteps(stages, substeps);
     const navigableStages = buildNavigableStages(stages);
 
     attachTravelerNotes(navigableStages, travelerNotesRows);
