@@ -23,9 +23,9 @@ const CORE_ASSETS = [
     "icons/icon.svg",
 ];
 const DATA_ASSETS = [
-    "roadbooks/perinexus/roadbook.json",
-    "roadbooks/perinexus/data/accommodation-enrichment.json",
-    "roadbooks/perinexus/data/poi-enrichment.json"
+    `roadbooks/${ROADBOOK_ID}/roadbook.json`,
+    `roadbooks/${ROADBOOK_ID}/data/accommodation-enrichment.json`,
+    `roadbooks/${ROADBOOK_ID}/data/poi-enrichment.json`
 ];
 const PRECACHE_GROUPS = [
     { cacheName: CACHE_NAME, assets: CORE_ASSETS, required: true },
