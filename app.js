@@ -1504,14 +1504,14 @@ function renderPrimaryAccommodation(accommodation) {
     const mainMetadata = findAccommodationEnrichment(mainUrl);
     const mainName = safeText(accommodation?.displayName || accommodation?.name, "");
     const mainDisplayLabel = mainName || mainMetadata?.name || genericAccommodationLabel(mainUrl);
-    const mainIconSource = mainName || mainMetadata?.name || mainUrl;
+    const mainIconSource = mainName || mainMetadata?.name || mainUrl || mainDisplayLabel;
     section.hidden = !mainName && !mainUrl && !mainPhoto && !mainMetadata?.image;
     if (section.hidden) return;
 
     if (mainName) {
         const name = document.createElement("p");
         name.className = "detail-name";
-        appendAccommodationNameWithIcon(name, mainName, mainName);
+        appendAccommodationNameWithIcon(name, mainName);
         container.appendChild(name);
     }
     if (mainUrl || mainPhoto || mainMetadata?.image) {
