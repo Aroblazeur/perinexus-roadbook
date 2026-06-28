@@ -9,6 +9,7 @@
 let roadbook = null;
 let currentDay = 0;
 let currentView = "home";
+let isApplyingRoute = false;
 let accommodationEnrichmentIndex = new Map();
 let poiEnrichmentIndex = new Map();
 let durationRequestId = 0;
@@ -159,7 +160,7 @@ async function initializeRoadbook() {
 
         applyAccommodationDisplayData();
         renderHomePage();
-        showHomePage();
+        applyRouteFromUrl({ replace: true });
 
         [accommodationEnrichmentIndex, poiEnrichmentIndex] = await Promise.all([
             accommodationEnrichmentPromise,
@@ -873,11 +874,12 @@ function appendSummaryLink(container, link, label = "Voir le tracé complet", cl
 /**
  * Affichage d'une journée
  */
-function displayDay(index) {
+function displayDay(index, options = {}) {
 
     if (!roadbook || !Array.isArray(roadbook.days)) return;
     if (!Number.isInteger(index) || index < 0 || index >= roadbook.days.length) return;
 
+    const { updateUrl = true, replace = false } = options;
     const day = roadbook.days[index];
 
     if (!day) return;
@@ -899,6 +901,7 @@ function displayDay(index) {
     updatePois(day);
 
     updateButtons();
+    if (updateUrl) updateUrlForStage(index, { replace });
 
 }
 
@@ -1012,17 +1015,19 @@ function buildStageTitleContent(title, departure, arrival) {
     return content;
 }
 
-function openStage(index) {
-    displayDay(index);
+function openStage(index, options = {}) {
+    displayDay(index, options);
     window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-function showHomePage() {
+function showHomePage(options = {}) {
+    const { updateUrl = true, replace = false } = options;
     currentView = "home";
     updateRoadbookChrome();
     setSectionHidden("summary", false);
     setStageSectionsHidden(true);
     updateButtons();
+    if (updateUrl) updateUrlForHome({ replace });
     document.title = safeText(roadbook?.title, "Roadbook vélo");
 }
 
@@ -1030,6 +1035,128 @@ function showStagePage() {
     currentView = "stage";
     setSectionHidden("summary", true);
     setStageSectionsHidden(false);
+}
+
+function applyRouteFromUrl(options = {}) {
+    if (!roadbook || !Array.isArray(roadbook.days)) return;
+
+    const { replace = false } = options;
+    const params = new URLSearchParams(window.location.search);
+    const targetIndex = resolveRouteIndex(params);
+
+    isApplyingRoute = true;
+    try {
+        if (targetIndex === null) {
+            showHomePage({ updateUrl: replace, replace });
+        } else {
+            displayDay(targetIndex, { updateUrl: replace, replace });
+        }
+    } finally {
+        isApplyingRoute = false;
+    }
+}
+
+function resolveRouteIndex(params) {
+    const stageNumber = parseRouteNumber(params.get("stage"));
+    if (stageNumber === null) return null;
+
+    const mainStageIndex = findMainStageIndex(stageNumber);
+    if (params.has("substage")) {
+        const substageNumber = parseRouteNumber(params.get("substage"));
+        const substageIndex = substageNumber === null
+            ? null
+            : findSubstageIndex(stageNumber, substageNumber);
+        return substageIndex ?? mainStageIndex;
+    }
+
+    return mainStageIndex;
+}
+
+function parseRouteNumber(value) {
+    const normalized = String(value || "").trim();
+    if (!/^\d+$/.test(normalized)) return null;
+
+    const number = Number.parseInt(normalized, 10);
+    return number > 0 ? number : null;
+}
+
+function findMainStageIndex(stageNumber) {
+    const index = roadbook.days.findIndex(day =>
+        !day?.isSubstep && Number(day?.stage) === stageNumber
+    );
+    return index >= 0 ? index : null;
+}
+
+function findSubstageIndex(stageNumber, substageNumber) {
+    let count = 0;
+    for (let index = 0; index < roadbook.days.length; index++) {
+        const day = roadbook.days[index];
+        if (!day?.isSubstep || Number(day.parentStageReference || day.parentStage || day.stage) !== stageNumber) {
+            continue;
+        }
+
+        count++;
+        if (count === substageNumber) return index;
+    }
+
+    return null;
+}
+
+function updateUrlForHome(options = {}) {
+    const url = new URL(window.location.href);
+    url.search = "";
+    url.hash = "";
+    updateBrowserUrl(url, options);
+}
+
+function updateUrlForStage(index, options = {}) {
+    if (!roadbook || !Array.isArray(roadbook.days)) return;
+
+    const day = roadbook.days[index];
+    if (!day) return;
+
+    const stageNumber = Number(day.isSubstep
+        ? (day.parentStageReference || day.parentStage || day.stage)
+        : day.stage);
+
+    if (!Number.isFinite(stageNumber) || stageNumber <= 0) return;
+
+    const params = new URLSearchParams();
+    params.set("stage", String(stageNumber));
+
+    if (day.isSubstep) {
+        const substageNumber = substageNumberForIndex(index);
+        if (substageNumber !== null) params.set("substage", String(substageNumber));
+    }
+
+    const url = new URL(window.location.href);
+    url.search = params.toString();
+    url.hash = "";
+    updateBrowserUrl(url, options);
+}
+
+function substageNumberForIndex(targetIndex) {
+    const target = roadbook?.days?.[targetIndex];
+    if (!target?.isSubstep) return null;
+
+    const stageNumber = Number(target.parentStageReference || target.parentStage || target.stage);
+    let count = 0;
+    for (let index = 0; index <= targetIndex; index++) {
+        const day = roadbook.days[index];
+        if (day?.isSubstep && Number(day.parentStageReference || day.parentStage || day.stage) === stageNumber) {
+            count++;
+        }
+    }
+
+    return count || null;
+}
+
+function updateBrowserUrl(url, options = {}) {
+    if (isApplyingRoute && !options.replace) return;
+    if (url.href === window.location.href) return;
+
+    const method = options.replace ? "replaceState" : "pushState";
+    window.history[method]({}, "", url);
 }
 
 function setStageSectionsHidden(hidden) {
@@ -1772,6 +1899,11 @@ document
 document
     .getElementById("next-day")
     .addEventListener("click", nextDay);
+
+window.addEventListener("popstate", () => {
+    applyRouteFromUrl({ replace: false });
+    window.scrollTo({ top: 0, behavior: "auto" });
+});
 
 initializeVersionManagement();
 updateButtons();
