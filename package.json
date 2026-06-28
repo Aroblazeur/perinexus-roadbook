@@ -2,6 +2,7 @@
   "name": "roadbook-engine",
   "private": true,
   "scripts": {
+    "create-roadbook": "node scripts/create-roadbook.js",
     "enrich:accommodations": "node scripts/enrich-accommodations.js",
     "enrich:pois": "node scripts/enrich-pois.js"
   }
