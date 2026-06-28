@@ -886,10 +886,7 @@ function displayDay(index) {
     showStagePage();
     updateRoadbookChrome(day);
 
-    document.getElementById("current-day").textContent =
-        day.isSubstep
-            ? `Étape ${day.parentStage || day.stage || (index + 1)}`
-            : day.day || `Étape ${day.stage || (index + 1)}`;
+    document.getElementById("current-day").textContent = navigationCenterLabel(day, index);
 
     renderStageTitle(day, index);
 
@@ -903,6 +900,27 @@ function displayDay(index) {
 
     updateButtons();
 
+}
+
+function navigationCenterLabel(day, index) {
+    const dayLabel = safeText(day?.day, "");
+    const label = day?.isSubstep
+        ? substepNavigationLabel(day, index)
+        : mainStageNavigationLabel(day, index);
+
+    return [label, dayLabel].filter(Boolean).join(" · ");
+}
+
+function mainStageNavigationLabel(day, index) {
+    return safeText(
+        day?.stageLabel,
+        `Étape ${day?.stage || (index + 1)}`
+    );
+}
+
+function substepNavigationLabel(day, index) {
+    const fallback = stageRouteLabel(day, index) || `Sous-étape ${index + 1}`;
+    return `Variante – ${safeText(day?.name, fallback)}`;
 }
 
 function renderStageTitle(day, index) {

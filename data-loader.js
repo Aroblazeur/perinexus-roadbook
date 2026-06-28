@@ -632,6 +632,7 @@ function mapEtape(record) {
     const accommodationType = normalizeAccommodationType(firstValue(record, ["type hebergement", "type hébergement"]));
     const type = "principale";
     const routeLabel = [departure, arrival].filter(Boolean).join(" → ");
+    const stageLabel = firstValue(record, ["nom etape", "nom étape", "nom etapes", "nom étapes"]);
 
     return {
         id: `stage-${stageNumber ?? "unknown"}`,
@@ -642,6 +643,7 @@ function mapEtape(record) {
         parentStageReference: null,
         stage: stageNumber,
         day: dayLabel,
+        stageLabel,
         name: routeLabel || `Étape ${stageNumber !== null ? stageNumber : "?"}`,
         type,
         departure,
