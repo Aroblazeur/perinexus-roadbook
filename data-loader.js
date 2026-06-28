@@ -3,6 +3,7 @@
 // Only list fallback files that are part of the current project tree.
 const FALLBACK_PATHS = ["roadbooks/perinexus/roadbook.json"];
 const NETWORK_FIRST_FETCH_OPTIONS = { cache: "no-store" };
+const LIBRARY_CONFIGURATION_SHEET = Object.freeze({ name: "Configuration" });
 
 function currentRoadbookConfig() {
     if (typeof window !== "undefined" && window.currentRoadbookConfig) {
@@ -883,6 +884,107 @@ function buildRoadbook(etapesRows, variantesRows, travelerNotesRows = [], addedA
     };
 }
 
+function roadbookLibraryFallback(config = {}) {
+    return {
+        id: config.id || config.shortId || "roadbook",
+        title: config.title || "RoadBook Explorer",
+        activity: config.activity || config.options?.activity || "",
+        destination: config.destination || config.options?.destination || "",
+        description: config.description || "Roadbook d'itinérance à vélo.",
+        coverImage: sanitizeImageUrl(config.coverImage || config.options?.coverImage || "")
+    };
+}
+
+function metadataValueFromObject(values, candidates) {
+    for (const candidate of candidates) {
+        const normalized = normalizeHeader(candidate);
+        const value = normalizeValue(values[normalized]);
+        if (value) return value;
+    }
+    return "";
+}
+
+function extractRoadbookLibraryMetadata(rows, config = {}) {
+    const fallback = roadbookLibraryFallback(config);
+    if (!Array.isArray(rows) || rows.length === 0) return fallback;
+
+    const directRow = rows.find(row => {
+        if (!row || typeof row !== "object") return false;
+        return Boolean(
+            firstValue(row, ["titre", "title", "nom"]) ||
+            firstValue(row, ["activite", "activité", "activity"]) ||
+            firstValue(row, ["destination"]) ||
+            firstValue(row, ["description", "resume", "résumé"]) ||
+            firstValue(row, ["image couverture", "image de couverture", "cover image", "cover"])
+        );
+    });
+
+    if (directRow) {
+        return {
+            ...fallback,
+            title: firstValue(directRow, ["titre", "title", "nom"]) || fallback.title,
+            activity: firstValue(directRow, ["activite", "activité", "activity", "type activite", "type activité"]) || fallback.activity,
+            destination: firstValue(directRow, ["destination", "lieu", "region", "région"]) || fallback.destination,
+            description: firstValue(directRow, ["description", "resume", "résumé"]) || fallback.description,
+            coverImage: sanitizeImageUrl(
+                firstValue(directRow, [
+                    "image couverture",
+                    "image de couverture",
+                    "cover image",
+                    "cover",
+                    "couverture",
+                    "image"
+                ]) || fallback.coverImage
+            )
+        };
+    }
+
+    const keyValues = {};
+    rows.forEach(row => {
+        if (!row || typeof row !== "object") return;
+        const keys = Object.keys(row);
+        if (!keys.length) return;
+        const key = normalizeValue(firstValue(row, ["cle", "clé", "champ", "field", "parametre", "paramètre"]) || row[keys[0]]);
+        if (!key) return;
+        const value = normalizeValue(firstValue(row, ["valeur", "value", "contenu", "content"]) || row[keys[1]]);
+        if (!value) return;
+        keyValues[normalizeHeader(key)] = value;
+    });
+
+    return {
+        ...fallback,
+        title: metadataValueFromObject(keyValues, ["titre", "title", "nom"]) || fallback.title,
+        activity: metadataValueFromObject(keyValues, ["activite", "activité", "activity", "type activite", "type activité"]) || fallback.activity,
+        destination: metadataValueFromObject(keyValues, ["destination", "lieu", "region", "région"]) || fallback.destination,
+        description: metadataValueFromObject(keyValues, ["description", "resume", "résumé"]) || fallback.description,
+        coverImage: sanitizeImageUrl(
+            metadataValueFromObject(keyValues, ["image couverture", "image de couverture", "cover image", "cover", "couverture", "image"]) || fallback.coverImage
+        )
+    };
+}
+
+async function loadRoadbookLibraryMetadata(configs = []) {
+    const source = Array.isArray(configs) ? configs.filter(Boolean) : [];
+    const cards = await Promise.all(source.map(async config => {
+        const fallback = roadbookLibraryFallback(config);
+        const sheetConfig = config.sheets?.configuration || config.sheets?.config || LIBRARY_CONFIGURATION_SHEET;
+        const url = googleSheetCsvUrl(sheetConfig, config);
+        if (!url) return fallback;
+
+        try {
+            const csv = await fetchCsv(url);
+            const rows = parseCsv(csv);
+            return extractRoadbookLibraryMetadata(rows, config);
+        } catch (error) {
+            const reason = error?.message || "erreur inconnue";
+            console.warn(`[Roadbook] Configuration de bibliothèque indisponible pour "${fallback.id}" : ${reason}.`);
+            return fallback;
+        }
+    }));
+
+    return cards;
+}
+
 async function fetchCsv(url) {
     let response;
     try {
@@ -1047,6 +1149,7 @@ async function loadRoadbook() {
 
 if (typeof window !== "undefined") {
     window.loadRoadbook = loadRoadbook;
+    window.loadRoadbookLibraryMetadata = loadRoadbookLibraryMetadata;
 }
 
 if (typeof module !== "undefined" && module.exports) {
@@ -1065,6 +1168,7 @@ if (typeof module !== "undefined" && module.exports) {
         sanitizeMapEmbedUrl,
         loadGoogleSheetRoadbook,
         loadFallbackRoadbook,
-        loadRoadbook
+        loadRoadbook,
+        loadRoadbookLibraryMetadata
     };
 }
