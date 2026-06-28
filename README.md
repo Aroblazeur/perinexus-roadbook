@@ -14,7 +14,7 @@ npx serve .
 
 Ou avec n’importe quel serveur statique local. Ouvrir ensuite :
 
-- `http://localhost:3000/` pour le roadbook par défaut ;
+- `http://localhost:3000/` pour afficher la bibliothèque de roadbooks ;
 - `http://localhost:3000/?roadbook=perinexus` pour charger explicitement Pirenexus ;
 - `http://localhost:3000/?roadbook=perinexus&stage=3` pour ouvrir une étape précise ;
 - `http://localhost:3000/?roadbook=perinexus&stage=3&substage=1` pour ouvrir une sous-étape.
@@ -66,7 +66,7 @@ Exemple minimal :
 })(typeof window !== "undefined" ? window : globalThis);
 ```
 
-Le roadbook demandé est sélectionné avec `?roadbook=<identifiant>`. Sans paramètre, `perinexus` est utilisé par défaut.
+Le roadbook demandé est sélectionné avec `?roadbook=<identifiant>`. Sans paramètre, la bibliothèque générale des roadbooks est affichée.
 
 ## Structure
 
@@ -81,6 +81,7 @@ roadbooks/
 └── perinexus/
     ├── config.js
     ├── roadbook.json
+    ├── assets/
     ├── data/
     │   ├── accommodation-enrichment.json
     │   └── poi-enrichment.json

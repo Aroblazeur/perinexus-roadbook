@@ -48,12 +48,18 @@
   </header>
 
   <main class="container">
+    <section id="library-section" class="card" hidden>
+      <h2>Mes roadbooks</h2>
+      <div id="roadbook-library-list" class="roadbook-library-grid"></div>
+      <p id="roadbook-library-empty" class="empty" hidden>Aucun roadbook disponible pour le moment.</p>
+    </section>
+
     <section id="summary" class="card" aria-label="Synthèse de l'itinéraire officiel">
       <div id="roadbook-info">Chargement...</div>
     </section>
 
     <section id="day-navigation" class="card" hidden>
-      <button id="home-button" type="button">Accueil</button>
+      <button id="home-button" type="button">← Mes roadbooks</button>
       <button id="previous-day" type="button">← Jour précédent</button>
       <span id="current-day">Jour 1</span>
       <button id="next-day" type="button">Jour suivant →</button>

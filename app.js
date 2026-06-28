@@ -8,11 +8,13 @@
 
 let roadbook = null;
 let currentDay = 0;
-let currentView = "home";
+let currentView = "library";
 let isApplyingRoute = false;
 let accommodationEnrichmentIndex = new Map();
 let poiEnrichmentIndex = new Map();
 let durationRequestId = 0;
+let activeRoadbookId = "";
+let libraryRoadbooks = [];
 
 const STAT_ICONS = Object.freeze({
     steps: [
@@ -113,29 +115,26 @@ const APP_VERSION_TOKEN = resolveCurrentVersionToken();
 const APP_VERSION_LABEL = formatVersionLabel(APP_VERSION_TOKEN);
 
 function getRoadbookConfig() {
-    return window.currentRoadbookConfig || window.roadbookContext?.config || {
-        id: "perinexus",
-        shortId: "perinexus",
-        title: "RoadBook Explorer",
-        forms: {},
-        enrichment: {}
-    };
+    return window.currentRoadbookConfig || window.roadbookContext?.config || null;
 }
 
 function roadbookId() {
-    return getRoadbookConfig().id || getRoadbookConfig().shortId || "perinexus";
+    const config = getRoadbookConfig();
+    return sanitizeRoadbookId(config?.id || config?.shortId);
 }
 
 function shouldKeepRoadbookInUrl() {
-    const currentId = roadbookId();
-    const defaultId = window.roadbookContext?.defaultId || "perinexus";
-    return new URLSearchParams(window.location.search).has("roadbook") || currentId !== defaultId;
+    return currentView !== "library" && Boolean(roadbookId());
 }
 
 function setRoadbookSearchParam(params) {
-    if (shouldKeepRoadbookInUrl()) {
-        params.set("roadbook", roadbookId());
-    }
+    if (!shouldKeepRoadbookInUrl()) return;
+    params.set("roadbook", roadbookId());
+}
+
+function sanitizeRoadbookId(value) {
+    const normalized = String(value || "").trim().toLowerCase();
+    return /^[a-z0-9-]+$/.test(normalized) ? normalized : "";
 }
 
 function resolveCurrentVersionToken() {
@@ -176,57 +175,104 @@ function initializeVersionManagement() {
 /**
  * Chargement des données
  */
-async function initializeRoadbook() {
-
+async function initializeApplication() {
     try {
-
         if (window.roadbookConfigReady) {
             await window.roadbookConfigReady;
         }
 
-        const accommodationEnrichmentPromise = loadOptionalAccommodationEnrichment();
-        const poiEnrichmentPromise = loadOptionalPoiEnrichment();
-
-        if (typeof loadRoadbook !== "function") {
-            throw new Error("Loader indisponible");
-        }
-
-        roadbook = await loadRoadbook();
-
-        if (!roadbook || !Array.isArray(roadbook.days) || roadbook.days.length === 0) {
-            throw new Error("Le roadbook ne contient aucune étape exploitable.");
-        }
-
-        applyAccommodationDisplayData();
-        renderHomePage();
-        applyRouteFromUrl({ replace: true });
-
-        [accommodationEnrichmentIndex, poiEnrichmentIndex] = await Promise.all([
-            accommodationEnrichmentPromise,
-            poiEnrichmentPromise
-        ]);
-        applyAccommodationDisplayData();
-        if (currentView === "home") updateSummary();
-        if (currentView === "stage") {
-            renderCurrentAccommodation();
-            renderCurrentPois();
-        }
-
+        await renderRoadbookLibrary();
+        await applyNavigationFromUrl({ replace: true });
     } catch (error) {
-
-        roadbook = null;
-        currentDay = 0;
-        console.error("[Roadbook] Chargement impossible :", error);
-
+        console.error("[Roadbook] Initialisation impossible :", error);
+        showLibraryPage({ updateUrl: true, replace: true });
         document.getElementById("roadbook-info").textContent =
             error && error.message
                 ? error.message
                 : "Impossible de charger le roadbook.";
-
         updateButtons();
+    }
+}
 
+async function renderRoadbookLibrary() {
+    const knownIds = typeof window.listRoadbookIds === "function"
+        ? window.listRoadbookIds()
+        : [window.roadbookContext?.defaultId || "perinexus"];
+
+    const configLoader = typeof window.loadRoadbookConfigById === "function"
+        ? window.loadRoadbookConfigById
+        : null;
+
+    const configs = (await Promise.all(knownIds.map(async id => {
+        const safeId = sanitizeRoadbookId(id);
+        if (!safeId) return null;
+        if (!configLoader) return null;
+        try {
+            return await configLoader(safeId, { activate: false });
+        } catch (error) {
+            console.warn(`[Roadbook] Configuration "${safeId}" indisponible dans la bibliothèque.`, error);
+            return null;
+        }
+    }))).filter(Boolean);
+
+    if (typeof loadRoadbookLibraryMetadata === "function") {
+        libraryRoadbooks = await loadRoadbookLibraryMetadata(configs);
+    } else {
+        libraryRoadbooks = configs.map(config => ({
+            id: config.id || config.shortId || "",
+            title: config.title || "RoadBook Explorer",
+            activity: config.activity || config.options?.activity || "",
+            destination: config.destination || config.options?.destination || "",
+            description: config.description || "",
+            coverImage: config.coverImage || config.options?.coverImage || ""
+        }));
     }
 
+    drawRoadbookLibraryCards();
+}
+
+async function ensureRoadbookLoaded(id) {
+    const safeId = sanitizeRoadbookId(id);
+    if (!safeId) return false;
+
+    if (activeRoadbookId === safeId && roadbook && Array.isArray(roadbook.days) && roadbook.days.length > 0) {
+        return true;
+    }
+
+    if (typeof window.loadRoadbookConfigById !== "function") {
+        throw new Error("Chargement de configuration indisponible.");
+    }
+
+    await window.loadRoadbookConfigById(safeId, { activate: true });
+    activeRoadbookId = roadbookId();
+
+    const accommodationEnrichmentPromise = loadOptionalAccommodationEnrichment();
+    const poiEnrichmentPromise = loadOptionalPoiEnrichment();
+
+    if (typeof loadRoadbook !== "function") {
+        throw new Error("Loader indisponible");
+    }
+
+    roadbook = await loadRoadbook();
+
+    if (!roadbook || !Array.isArray(roadbook.days) || roadbook.days.length === 0) {
+        throw new Error("Le roadbook ne contient aucune étape exploitable.");
+    }
+
+    applyAccommodationDisplayData();
+    renderHomePage();
+
+    [accommodationEnrichmentIndex, poiEnrichmentIndex] = await Promise.all([
+        accommodationEnrichmentPromise,
+        poiEnrichmentPromise
+    ]);
+    applyAccommodationDisplayData();
+    if (currentView === "home") updateSummary();
+    if (currentView === "stage") {
+        renderCurrentAccommodation();
+        renderCurrentPois();
+    }
+    return true;
 }
 
 function loadOptionalAccommodationEnrichment() {
@@ -235,7 +281,7 @@ function loadOptionalAccommodationEnrichment() {
         return Promise.resolve(new Map());
     }
     return loader.loadAccommodationEnrichment({
-        path: getRoadbookConfig().enrichment?.accommodationPath
+        path: getRoadbookConfig()?.enrichment?.accommodationPath
     });
 }
 
@@ -251,7 +297,7 @@ function loadOptionalPoiEnrichment() {
         return Promise.resolve(new Map());
     }
     return loader.loadPoiEnrichment({
-        path: getRoadbookConfig().enrichment?.poiPath
+        path: getRoadbookConfig()?.enrichment?.poiPath
     });
 }
 
@@ -279,6 +325,75 @@ function updateSummary() {
 
 function renderHomePage() {
     updateSummary();
+}
+
+function drawRoadbookLibraryCards() {
+    const list = document.getElementById("roadbook-library-list");
+    const empty = document.getElementById("roadbook-library-empty");
+    if (!list || !empty) return;
+
+    list.replaceChildren();
+    const cards = Array.isArray(libraryRoadbooks)
+        ? libraryRoadbooks.filter(entry => entry && sanitizeRoadbookId(entry.id))
+        : [];
+
+    if (!cards.length) {
+        empty.hidden = false;
+        return;
+    }
+
+    empty.hidden = true;
+    cards.forEach(item => list.appendChild(createRoadbookLibraryCard(item)));
+}
+
+function createRoadbookLibraryCard(item) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "roadbook-library-card";
+    button.addEventListener("click", () => {
+        openRoadbook(item.id).catch(error => {
+            console.error("[Roadbook] Ouverture impossible :", error);
+        });
+    });
+    button.setAttribute("aria-label", `Ouvrir ${safeText(item.title, item.id)}`);
+
+    const cover = document.createElement("div");
+    cover.className = "roadbook-library-card__cover";
+    if (isSafeLibraryImageSource(item.coverImage)) {
+        const image = document.createElement("img");
+        image.src = item.coverImage;
+        image.alt = `Couverture ${safeText(item.title, "roadbook")}`;
+        image.loading = "lazy";
+        image.className = "roadbook-library-card__cover-image";
+        cover.appendChild(image);
+    } else {
+        cover.classList.add("roadbook-library-card__cover--placeholder");
+        cover.textContent = "🧭";
+        cover.setAttribute("aria-hidden", "true");
+    }
+
+    const content = document.createElement("div");
+    content.className = "roadbook-library-card__content";
+
+    const title = document.createElement("h3");
+    title.className = "roadbook-library-card__title";
+    title.textContent = safeText(item.title, "Roadbook");
+    content.appendChild(title);
+
+    const meta = document.createElement("p");
+    meta.className = "roadbook-library-card__meta";
+    meta.textContent = [safeText(item.activity, ""), safeText(item.destination, "")]
+        .filter(Boolean)
+        .join(" · ");
+    if (meta.textContent) content.appendChild(meta);
+
+    const description = document.createElement("p");
+    description.className = "roadbook-library-card__description";
+    description.textContent = safeText(item.description, "");
+    if (description.textContent) content.appendChild(description);
+
+    button.append(cover, content);
+    return button;
 }
 
 function computeStagesTotal() {
@@ -1063,10 +1178,18 @@ function openStage(index, options = {}) {
     window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
+async function openRoadbook(id, options = {}) {
+    const { replace = false } = options;
+    await ensureRoadbookLoaded(id);
+    showHomePage({ updateUrl: true, replace });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
 function showHomePage(options = {}) {
     const { updateUrl = true, replace = false } = options;
     currentView = "home";
     updateRoadbookChrome();
+    setSectionHidden("library-section", true);
     setSectionHidden("summary", false);
     setStageSectionsHidden(true);
     updateButtons();
@@ -1074,21 +1197,59 @@ function showHomePage(options = {}) {
     document.title = safeText(roadbook?.title, "RoadBook Explorer");
 }
 
+function showLibraryPage(options = {}) {
+    const { updateUrl = true, replace = false } = options;
+    currentView = "library";
+    updateRoadbookChrome(null, { title: "RoadBook Explorer" });
+    setSectionHidden("library-section", false);
+    setSectionHidden("summary", true);
+    setStageSectionsHidden(true);
+    updateButtons();
+    if (updateUrl) updateUrlForLibrary({ replace });
+    document.title = "RoadBook Explorer";
+}
+
 function showStagePage() {
     currentView = "stage";
+    setSectionHidden("library-section", true);
     setSectionHidden("summary", true);
     setStageSectionsHidden(false);
 }
 
-function applyRouteFromUrl(options = {}) {
-    if (!roadbook || !Array.isArray(roadbook.days)) return;
-
+async function applyNavigationFromUrl(options = {}) {
     const { replace = false } = options;
     const params = new URLSearchParams(window.location.search);
-    const targetIndex = resolveRouteIndex(params);
+    const requestedId = sanitizeRoadbookId(params.get("roadbook"));
+
+    if (!requestedId) {
+        showLibraryPage({ updateUrl: replace, replace });
+        return;
+    }
+
+    try {
+        await ensureRoadbookLoaded(requestedId);
+    } catch (error) {
+        console.error("[Roadbook] Chargement impossible :", error);
+        roadbook = null;
+        currentDay = 0;
+        showLibraryPage({ updateUrl: true, replace: true });
+        document.getElementById("roadbook-info").textContent =
+            error && error.message
+                ? error.message
+                : "Impossible de charger le roadbook.";
+        return;
+    }
+
+    applyRouteFromUrl(params, { replace });
+}
+
+function applyRouteFromUrl(params, options = {}) {
+    if (!roadbook || !Array.isArray(roadbook.days)) return;
+    const { replace = false } = options;
 
     isApplyingRoute = true;
     try {
+        const targetIndex = resolveRouteIndex(params);
         if (targetIndex === null) {
             showHomePage({ updateUrl: replace, replace });
         } else {
@@ -1150,6 +1311,13 @@ function updateUrlForHome(options = {}) {
     const params = new URLSearchParams();
     setRoadbookSearchParam(params);
     url.search = params.toString();
+    url.hash = "";
+    updateBrowserUrl(url, options);
+}
+
+function updateUrlForLibrary(options = {}) {
+    const url = new URL(window.location.href);
+    url.search = "";
     url.hash = "";
     updateBrowserUrl(url, options);
 }
@@ -1222,8 +1390,8 @@ function setSectionHidden(id, hidden) {
     if (element) element.hidden = hidden;
 }
 
-function updateRoadbookChrome(day = null) {
-    const title = safeText(roadbook?.title, "RoadBook Explorer");
+function updateRoadbookChrome(day = null, options = {}) {
+    const title = safeText(options.title || roadbook?.title, "RoadBook Explorer");
     const pageTitle = day?.title ? `${safeText(day.title)} - ${title}` : title;
     const headerTitle = document.getElementById("roadbook-title");
     const footerTitle = document.getElementById("footer-roadbook-title");
@@ -1613,7 +1781,7 @@ function appendAddAccommodationButton(container, stageNumber) {
 }
 
 function buildAddAccommodationFormUrl(stageNumber) {
-    const form = getRoadbookConfig().forms?.addedAccommodation || {};
+    const form = getRoadbookConfig()?.forms?.addedAccommodation || {};
     if (!form.url || !form.stageField) return "";
 
     const url = new URL(form.url);
@@ -1679,7 +1847,7 @@ function renderNotes(notes, stageNumber) {
 }
 
 function buildTravelerNotesFormUrl(stageNumber) {
-    const form = getRoadbookConfig().forms?.travelerNotes || {};
+    const form = getRoadbookConfig()?.forms?.travelerNotes || {};
     if (!form.url || !form.stageField) return "";
 
     const url = new URL(form.url);
@@ -1926,6 +2094,23 @@ function createAccommodationPlaceholder(label = "") {
     return placeholder;
 }
 
+function isSafeLibraryImageSource(value) {
+    const candidate = String(value || "").trim();
+    if (!candidate) return false;
+    if (/^https?:\/\//i.test(candidate)) return isSafeUrl(candidate);
+
+    const path = candidate.split(/[?#]/)[0];
+    const unsafe =
+        !path ||
+        candidate.startsWith("//") ||
+        candidate.includes("\\") ||
+        /^[a-z][a-z0-9+.-]*:/i.test(candidate) ||
+        path.startsWith("/") ||
+        path.split("/").includes("..");
+
+    return !unsafe;
+}
+
 function uniqueValues(values) {
     return [...new Set(values.map(value => safeText(value, "").trim()).filter(Boolean))];
 }
@@ -1986,7 +2171,7 @@ function previousDay() {
 
     if (currentView === "stage" && currentDay === 0) {
 
-        goHome();
+        goRoadbookHome();
 
     } else if (currentDay > 0) {
 
@@ -2016,9 +2201,14 @@ function nextDay() {
 
 }
 
-function goHome() {
+function goRoadbookHome() {
     if (!roadbook || !Array.isArray(roadbook.days)) return;
     showHomePage();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function goLibrary() {
+    showLibraryPage();
     window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -2030,10 +2220,12 @@ function updateButtons() {
     const hasDays = Boolean(roadbook && Array.isArray(roadbook.days) && roadbook.days.length);
 
     document.getElementById("previous-day").disabled =
-        !hasDays || currentView === "home";
+        !hasDays || currentView !== "stage";
 
     document.getElementById("next-day").disabled =
-        !hasDays || (currentView === "stage" && currentDay === roadbook.days.length - 1);
+        !hasDays ||
+        currentView === "library" ||
+        (currentView === "stage" && currentDay === roadbook.days.length - 1);
 
 }
 
@@ -2046,17 +2238,19 @@ document
 
 document
     .getElementById("home-button")
-    .addEventListener("click", goHome);
+    .addEventListener("click", goLibrary);
 
 document
     .getElementById("next-day")
     .addEventListener("click", nextDay);
 
 window.addEventListener("popstate", () => {
-    applyRouteFromUrl({ replace: false });
+    applyNavigationFromUrl({ replace: false }).catch(error => {
+        console.error("[Roadbook] Navigation impossible :", error);
+    });
     window.scrollTo({ top: 0, behavior: "auto" });
 });
 
 initializeVersionManagement();
 updateButtons();
-initializeRoadbook();
+initializeApplication();
