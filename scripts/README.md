@@ -1,3 +1,43 @@
+# Scripts
+
+## Créer un nouveau roadbook
+
+`create-roadbook.js` génère automatiquement toute l'arborescence nécessaire pour un nouveau voyage.
+
+### Lancer le script
+
+```bash
+npm run create-roadbook
+```
+
+Le script pose quelques questions interactives (identifiant, titre, description, ID du Google Sheet) et crée les fichiers suivants :
+
+```text
+roadbooks/<id>/config.js
+roadbooks/<id>/roadbook.json
+roadbooks/<id>/data/accommodation-enrichment.json
+roadbooks/<id>/data/poi-enrichment.json
+roadbooks/<id>/gpx/
+roadbooks/<id>/assets/
+```
+
+Les arguments peuvent également être passés directement en ligne de commande pour éviter les questions interactives :
+
+```bash
+npm run create-roadbook -- --id=mon-voyage --title="Mon Voyage" --description="Roadbook vélo." --sheet-id=SHEET_ID
+```
+
+| Option | Description |
+|--------|-------------|
+| `--id` | Identifiant du roadbook (lettres minuscules, chiffres, tirets) — **obligatoire** |
+| `--title` | Titre affiché dans l'application |
+| `--description` | Description courte |
+| `--sheet-id` | ID du Google Sheet associé |
+
+Une fois le roadbook créé, accédez-y via : `index.html?roadbook=<id>`
+
+---
+
 # Enrichissement des hébergements
 
 `enrich-accommodations.js` est un outil manuel et indépendant du roadbook. Il lit l’onglet publié `etapes principales`, la feuille `ajout hebergement`, puis visite les liens d’hébergement pour récupérer un nom exploitable et une image.
