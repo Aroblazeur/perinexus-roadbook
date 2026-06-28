@@ -1503,6 +1503,8 @@ function renderPrimaryAccommodation(accommodation) {
     const mainPhoto = safeText(accommodation?.photo, "");
     const mainMetadata = findAccommodationEnrichment(mainUrl);
     const mainName = safeText(accommodation?.displayName || accommodation?.name, "");
+    const mainDisplayLabel = mainName || mainMetadata?.name || genericAccommodationLabel(mainUrl);
+    const mainIconSource = mainName || mainMetadata?.name || mainUrl;
     section.hidden = !mainName && !mainUrl && !mainPhoto && !mainMetadata?.image;
     if (section.hidden) return;
 
@@ -1516,9 +1518,9 @@ function renderPrimaryAccommodation(accommodation) {
         appendAccommodationResource(
             container,
             mainUrl,
-            mainName || genericAccommodationLabel(mainUrl),
+            mainDisplayLabel,
             mainMetadata,
-            mainName || mainMetadata?.name || mainUrl,
+            mainIconSource,
             mainPhoto,
             [accommodation?.name, accommodation?.displayName, mainMetadata?.name, mainUrl]
         );
