@@ -1494,7 +1494,7 @@ function renderPrimaryAccommodation(accommodation) {
         if (!name) return;
         const detail = document.createElement("p");
         detail.className = "detail-name";
-        appendAccommodationNameWithIcon(detail, name, name);
+        appendAccommodationNameWithIcon(detail, name);
         container.appendChild(detail);
         return;
     }
@@ -1696,7 +1696,7 @@ function appendResourceList(container, title, values, showHeading = true) {
         const label = preferredLabel || metadata?.name || `${title} ${index + 1}`;
         const detail = document.createElement("p");
         detail.className = "detail-name detail-name--compact";
-        appendAccommodationNameWithIcon(detail, label, label);
+        appendAccommodationNameWithIcon(detail, label);
         item.appendChild(detail);
         appendAccommodationResource(
             item,
@@ -1718,8 +1718,8 @@ function appendResourceList(container, title, values, showHeading = true) {
     }
 }
 
-function appendAccommodationNameWithIcon(container, name, iconSource) {
-    const icon = createAccommodationIcon(iconSource || name);
+function appendAccommodationNameWithIcon(container, name) {
+    const icon = createAccommodationIcon(name);
     if (icon) container.append(icon, document.createTextNode(" "));
     container.appendChild(document.createTextNode(name));
 }
