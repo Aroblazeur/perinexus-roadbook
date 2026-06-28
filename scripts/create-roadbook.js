@@ -3,7 +3,7 @@
 /**
  * create-roadbook.js
  *
- * Crée automatiquement toute l'arborescence nécessaire pour un nouveau roadbook.
+ * Créé automatiquement toute l'arborescence nécessaire pour un nouveau roadbook.
  *
  * Usage :
  *   npm run create-roadbook
@@ -45,13 +45,17 @@ async function main() {
 
     const roadbookDir = path.join(ROOT_DIR, "roadbooks", id);
 
-    await assertDoesNotExist(roadbookDir, id);
-
     console.log(`\nCréation du roadbook "${id}"…`);
 
-    await fs.mkdir(path.join(roadbookDir, "data"), { recursive: true });
-    await fs.mkdir(path.join(roadbookDir, "gpx"), { recursive: true });
-    await fs.mkdir(path.join(roadbookDir, "assets"), { recursive: true });
+    try {
+        await fs.mkdir(roadbookDir);
+    } catch (error) {
+        if (error.code === "EEXIST") die(`Le dossier roadbooks/${id} existe déjà.`);
+        throw error;
+    }
+    await fs.mkdir(path.join(roadbookDir, "data"));
+    await fs.mkdir(path.join(roadbookDir, "gpx"));
+    await fs.mkdir(path.join(roadbookDir, "assets"));
 
     await fs.writeFile(path.join(roadbookDir, "config.js"), buildConfigJs(id, title, description, googleSheetId), "utf8");
     await fs.writeFile(path.join(roadbookDir, "roadbook.json"), buildRoadbookJson(title, description), "utf8");
@@ -155,7 +159,7 @@ function buildRoadbookJson(title, description) {
 }
 
 function buildEmptyEnrichmentJson() {
-    return JSON.stringify({ generatedAt: null, items: [] }, null, 2) + "\n";
+    return JSON.stringify({ generatedAt: new Date().toISOString(), items: [] }, null, 2) + "\n";
 }
 
 // ---------------------------------------------------------------------------
@@ -170,7 +174,14 @@ function toPascalCase(id) {
 }
 
 function escapeJs(value) {
-    return String(value).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+    return String(value)
+        .replace(/\\/g, "\\\\")
+        .replace(/"/g, '\\"')
+        .replace(/\n/g, "\\n")
+        .replace(/\r/g, "\\r")
+        .replace(/\t/g, "\\t")
+        .replace(/\u2028/g, "\\u2028")
+        .replace(/\u2029/g, "\\u2029");
 }
 
 function parseCliArgs(argv) {
@@ -203,16 +214,6 @@ function closeReadline() {
 function prompt(question) {
     if (!process.stdin.isTTY) return Promise.resolve("");
     return new Promise(resolve => getReadline().question(question, resolve));
-}
-
-async function assertDoesNotExist(dir, id) {
-    try {
-        await fs.access(dir);
-        closeReadline();
-        die(`Le dossier roadbooks/${id} existe déjà.`);
-    } catch (error) {
-        if (error.code !== "ENOENT") throw error;
-    }
 }
 
 function die(message) {
