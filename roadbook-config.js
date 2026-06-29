@@ -5,7 +5,7 @@
     const CONFIG_PATH_PREFIX = "roadbooks";
     const KNOWN_ROADBOOK_IDS = Object.freeze([DEFAULT_ROADBOOK_ID, "alsace-canal-marne-rhin"]);
     const CONTRIBUTION_ENDPOINT =
-        "https://script.google.com/macros/s/AKfycbwZrE2tTFMd-rlj2gZ0V5rtHtwktL3aUvilVRahb0eMxBbCR5KLpWFRxpqU-IwIS7nslQ/exec";
+        "https://script.google.com/macros/s/AKfycby9vh9snguG8M8khWWkqi2e4mrsmKsKKVNkMrIogb7BanHnoYN9v7DoP-Z08Yh7EPHK_A/exec";
 
     const requested = resolveRequestedRoadbook(global.location);
     const safeId = sanitizeRoadbookId(requested.id) || DEFAULT_ROADBOOK_ID;

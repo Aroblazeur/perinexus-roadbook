@@ -1904,6 +1904,7 @@ async function sendContribution(contributionType, stage, payload) {
     };
 
     console.info("[RoadBook Contribution] Payload envoyé", requestPayload);
+    console.info("[RoadBook Contribution] Endpoint utilisé", endpoint);
 
     let response;
     try {
