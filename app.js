@@ -1544,6 +1544,20 @@ function renderStageMetricsAndDuration(day, index) {
         if (requestId !== durationRequestId || currentDay !== index) return;
         renderStageMetricValues(result?.metrics);
         if (result?.formatted) updateStatValue("duration", result.formatted);
+        console.info("[GPX Metrics] Valeurs finales affichées", {
+            stage: day?.stage,
+            title: day?.title || day?.name || "",
+            gpxUrl,
+            sheetMetrics,
+            gpxMetrics: result?.gpxMetrics || null,
+            finalMetrics: result?.metrics || null,
+            displayed: {
+                distance: document.getElementById("distance")?.textContent || "",
+                elevationGain: document.getElementById("elevation")?.textContent || "",
+                elevationLoss: document.getElementById("elevation-loss")?.textContent || "",
+                duration: document.getElementById("duration")?.textContent || ""
+            }
+        });
     }).catch(error => {
         console.warn(`[Durée] Estimation impossible : ${error.message}. Fallback conservé.`);
     });

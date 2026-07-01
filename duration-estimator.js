@@ -76,7 +76,56 @@
         return {
             lat,
             lng,
-            elevation: elevationNode ? finiteNumber(elevationNode.textContent) : null
+            elevation: elevationNode ? finiteNumber(String(elevationNode.textContent || "").trim().replace(",", ".")) : null
+        };
+    }
+
+    function calculateElevationProfile(sequences) {
+        const elevations = sequences
+            .flat()
+            .map(point => point.elevation)
+            .filter(Number.isFinite);
+
+        if (!elevations.length) {
+            return {
+                elevationGainM: null,
+                elevationLossM: null,
+                elevationMinM: null,
+                elevationMaxM: null
+            };
+        }
+
+        let elevationGainM = 0;
+        let elevationLossM = 0;
+
+        sequences.forEach(sequence => {
+            let previousElevation = null;
+            let pendingDelta = 0;
+
+            sequence.forEach(point => {
+                if (!Number.isFinite(point.elevation)) return;
+                if (previousElevation === null) {
+                    previousElevation = point.elevation;
+                    return;
+                }
+
+                const difference = point.elevation - previousElevation;
+                previousElevation = point.elevation;
+                pendingDelta += difference;
+
+                if (Math.abs(pendingDelta) >= ELEVATION_NOISE_THRESHOLD_M) {
+                    if (pendingDelta > 0) elevationGainM += pendingDelta;
+                    else elevationLossM += Math.abs(pendingDelta);
+                    pendingDelta = 0;
+                }
+            });
+        });
+
+        return {
+            elevationGainM,
+            elevationLossM,
+            elevationMinM: Math.min(...elevations),
+            elevationMaxM: Math.max(...elevations)
         };
     }
 
@@ -112,24 +161,21 @@
         if (!(distanceKm > 0)) throw new Error("Distance GPX indisponible");
 
         const hasCompleteElevation = elevationPointCount === points.length;
-        let elevationGainM = null;
-        let elevationLossM = null;
-        if (hasCompleteElevation) {
-            elevationGainM = 0;
-            elevationLossM = 0;
-            sequences.forEach(sequence => {
-                for (let index = 1; index < sequence.length; index += 1) {
-                    const difference = sequence[index].elevation - sequence[index - 1].elevation;
-                    if (difference >= ELEVATION_NOISE_THRESHOLD_M) elevationGainM += difference;
-                    if (difference <= -ELEVATION_NOISE_THRESHOLD_M) elevationLossM += Math.abs(difference);
-                }
-            });
-        }
+        const elevationProfile = hasCompleteElevation
+            ? calculateElevationProfile(sequences)
+            : {
+                elevationGainM: null,
+                elevationLossM: null,
+                elevationMinM: null,
+                elevationMaxM: null
+            };
 
         return {
             distanceKm,
-            elevationGainM,
-            elevationLossM,
+            elevationGainM: elevationProfile.elevationGainM,
+            elevationLossM: elevationProfile.elevationLossM,
+            elevationMinM: elevationProfile.elevationMinM,
+            elevationMaxM: elevationProfile.elevationMaxM,
             pointCount: points.length,
             elevationPointCount,
             hasElevation: elevationPointCount > 0,
@@ -165,6 +211,10 @@
                     url,
                     pointCount: metrics.pointCount,
                     elevationPointCount: metrics.elevationPointCount,
+                    elevationMinM: metrics.elevationMinM,
+                    elevationMaxM: metrics.elevationMaxM,
+                    elevationGainM: metrics.elevationGainM,
+                    elevationLossM: metrics.elevationLossM,
                     hasCompleteElevation: metrics.hasCompleteElevation
                 });
                 if (metrics.elevationPointCount === 0) {
